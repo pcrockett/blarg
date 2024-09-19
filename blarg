@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+import argparse
+
+
+def main():
+    parser = argparse.ArgumentParser("blarg", description="Execute bash target files")
+    parser.add_argument(
+        "script_path", help="Script file to execute", default=None, nargs="?"
+    )
+    args = parser.parse_args()
+    print(args.script_path)
+
+
+if __name__ == "__main__":
+    main()
