@@ -13,7 +13,7 @@ panic() {
 
 depends_on() {
     local this_dir
-    this_dir="$(dirname "${THIS_TARGET}")"
+    this_dir="$(dirname "${BLARG_TARGET}")"
     for script_basename in "${@}"; do
         "${this_dir}/${script_basename}.sh"
     done
@@ -43,14 +43,24 @@ def main():
     parser.add_argument(
         "script_path", help="Script file to execute", default=None, nargs="?"
     )
+    parser.add_argument(
+        "--dump-src",
+        "-d",
+        help="Don't run the script; just dump the full source that would be executed by Bash",
+        action="store_true",
+    )
     args = parser.parse_args()
     with open(args.script_path, "r", encoding="utf8") as f:
         script = "\n".join(f.readlines())
 
     full_script = STDLIB + script + EXECUTOR
 
+    if args.dump_src:
+        print(full_script)
+        return
+
     env = os.environ
-    env["THIS_TARGET"] = args.script_path
+    env["BLARG_TARGET"] = args.script_path
 
     subprocess.run(
         ["bash", "-Eeuo", "pipefail"],
