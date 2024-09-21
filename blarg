@@ -1,5 +1,40 @@
 #!/usr/bin/env python3
 import argparse
+import subprocess
+
+
+STDLIB = """
+
+panic() {
+    echo "${*}" >&2
+    exit 1
+}
+
+depends_on() {
+    local this_dir
+    this_dir="$(dirname "${THIS_TARGET}")"
+    for script_basename in "${@}"; do
+        "${this_dir}/${script_basename}.sh"
+    done
+}
+
+reached_if() {
+    false
+}
+
+apply() {
+    true
+}
+
+"""
+
+
+EXECUTOR = """
+
+if ! reached_if &> /dev/null; then
+    apply
+fi
+"""
 
 
 def main():
@@ -8,7 +43,20 @@ def main():
         "script_path", help="Script file to execute", default=None, nargs="?"
     )
     args = parser.parse_args()
-    print(args.script_path)
+    with open(args.script_path, "r", encoding="utf8") as f:
+        script = "\n".join(f.readlines())
+
+    vars = f"""
+
+    THIS_TARGET="{args.script_path}"
+
+    """
+
+    full_script = STDLIB + vars + script + EXECUTOR
+
+    subprocess.run(
+        ["bash", "-Eeuo", "pipefail"], check=True, input=full_script, encoding="utf8"
+    )
 
 
 if __name__ == "__main__":

@@ -23,9 +23,8 @@ In `cowsay_installed.sh`:
 
 ```bash
 #!/usr/bin/env blarg
-#
-# depends: apt_updated
-#
+
+depends_on apt_updated
 
 reached_if() {
   command -v cowsay
@@ -40,9 +39,8 @@ And in `moo.sh`:
 
 ```bash
 #!/usr/bin/env blarg
-#
-# depends: cowsay_installed
-#
+
+depends_on cowsay_installed
 
 apply() {
   cowsay "MOOO!"

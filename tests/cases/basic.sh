@@ -1,3 +1,7 @@
 #!/usr/bin/env blarg
 
-echo "hi!"
+depends_on foobar
+
+apply() {
+    echo "hello, there..."
+}
