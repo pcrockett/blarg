@@ -4,6 +4,7 @@ import os
 import subprocess
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 STDLIB = """
@@ -41,7 +42,7 @@ fi
 
 @dataclass
 class CliArgs:
-    script_path: str | None
+    script_path: Optional[str]
     dump_src: bool
     version: bool
 
