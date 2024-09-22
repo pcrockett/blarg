@@ -9,7 +9,7 @@ from typing import Optional
 
 STDLIB = """
 panic() {
-    echo "${*}" >&2
+    echo "FATAL: ${*}" >&2
     exit 1
 }
 

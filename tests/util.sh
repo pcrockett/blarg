@@ -4,6 +4,7 @@ setup() {
     set -Eeuo pipefail
     TEST_CWD="$(mktemp --directory --tmpdir=/tmp blarg-test.XXXXXX)"
     TEST_HOME="$(mktemp --directory --tmpdir=/tmp blarg-home.XXXXXX)"
+    REPO_HOME="$(pwd)"
     mkdir -p "${TEST_HOME}/.local/bin"
     cp blarg "${TEST_HOME}/.local/bin"
     cp .tool-versions "${TEST_CWD}"
@@ -20,6 +21,13 @@ teardown() {
 fail() {
     echo "${*}"
     exit 1
+}
+
+usecase() {
+    mkdir --parent "${TEST_CWD}/targets"
+    for t in "${@}"; do
+        cp "${REPO_HOME}/tests/cases/${t}.sh" "${TEST_CWD}/targets"
+    done
 }
 
 # shellcheck disable=SC2034  # this function returns data via variables
