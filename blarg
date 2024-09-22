@@ -87,6 +87,12 @@ def main() -> int:
     env = os.environ
     env["BLARG_TARGET"] = args.script_path
 
+    running_targets = env.get("BLARG_RUNNING_TARGETS")
+    if running_targets:
+        running_targets = f"{running_targets}:{args.script_path}"
+    else:
+        running_targets = args.script_path
+
     result = subprocess.run(
         ["bash", "-Eeuo", "pipefail"],
         input=full_script,
