@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 
+VERSION = "0.0.1"
+
+
 STDLIB = """
 panic() {
     echo "FATAL: ${*}" >&2
@@ -69,7 +72,7 @@ def main() -> int:
     args = parse_args()
 
     if args.version:
-        print("blarg version 0.0.1")
+        print(f"blarg version {VERSION}")
         return 0
 
     with open(args.script_path, "r", encoding="utf8") as f:
