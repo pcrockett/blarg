@@ -5,7 +5,6 @@ import subprocess
 
 
 STDLIB = """
-
 panic() {
     echo "${*}" >&2
     exit 1
@@ -51,7 +50,7 @@ def main():
     )
     args = parser.parse_args()
     with open(args.script_path, "r", encoding="utf8") as f:
-        script = "\n".join(f.readlines())
+        script = "".join(f.readlines())
 
     full_script = STDLIB + script + EXECUTOR
 
