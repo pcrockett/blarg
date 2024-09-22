@@ -46,7 +46,7 @@ B!$'
 @test 'panic - always - crashes script' {
     usecase panic
     capture_output ./targets/panic.sh
-    assert_stderr '^FATAL: OMG panic!'
+    assert_stderr '^FATAL: OMG panic!$'
     assert_exit_code 1
     assert_no_stdout
 }

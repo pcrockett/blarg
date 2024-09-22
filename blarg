@@ -84,15 +84,14 @@ def main() -> int:
     env = os.environ
     env["BLARG_TARGET"] = args.script_path
 
-    subprocess.run(
+    result = subprocess.run(
         ["bash", "-Eeuo", "pipefail"],
-        check=True,
         input=full_script,
         encoding="utf8",
         env=env,
     )
 
-    return 0
+    return result.returncode
 
 
 if __name__ == "__main__":
