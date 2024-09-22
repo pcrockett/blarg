@@ -2,9 +2,10 @@
 
 setup() {
     set -Eeuo pipefail
-    TEST_CWD="$(mktemp --directory --tmpdir=/tmp bats-test.XXXXXX)"
-    TEST_HOME="$(mktemp --directory --tmpdir=/tmp bats-home.XXXXXX)"
+    TEST_CWD="$(mktemp --directory --tmpdir=/tmp blarg-test.XXXXXX)"
+    TEST_HOME="$(mktemp --directory --tmpdir=/tmp blarg-home.XXXXXX)"
     mkdir -p "${TEST_HOME}/.local/bin"
+    cp blarg "${TEST_HOME}/.local/bin"
     cp .tool-versions "${TEST_CWD}"
     cd "${TEST_CWD}"
     PATH="${TEST_HOME}/.local/bin:${PATH}"
