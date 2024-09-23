@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import os
 import subprocess
+import sys
 
 from dataclasses import dataclass
 from typing import Optional
@@ -65,7 +67,11 @@ def parse_args() -> CliArgs:
         "--version", "-v", help="Display version number", action="store_true"
     )
     args = parser.parse_args()
-    return CliArgs(args.script_path, args.dump_src, args.version)
+    return CliArgs(
+        os.path.abspath(args.script_path) if args.script_path else None,
+        args.dump_src,
+        args.version,
+    )
 
 
 def main() -> int:
@@ -87,11 +93,23 @@ def main() -> int:
     env = os.environ
     env["BLARG_TARGET"] = args.script_path
 
-    running_targets = env.get("BLARG_RUNNING_TARGETS")
-    if running_targets:
-        running_targets = f"{running_targets}:{args.script_path}"
+    running_targets_unparsed = env.get("BLARG_RUNNING_TARGETS")
+    if running_targets_unparsed:
+        running_targets = json.loads(running_targets_unparsed)
     else:
-        running_targets = args.script_path
+        running_targets = []
+
+    if args.script_path in running_targets:
+        print(
+            f"FATAL: Circular dependency detected at `{args.script_path}`:\n"
+            f"{'\n-> '.join(running_targets)}\n"
+            f"-> {args.script_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    running_targets.append(args.script_path)
+    env["BLARG_RUNNING_TARGETS"] = json.dumps(running_targets)
 
     result = subprocess.run(
         ["bash", "-Eeuo", "pipefail"],

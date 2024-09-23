@@ -55,7 +55,10 @@ B!$'
     usecase circular_dep_a circular_dep_b
     capture_output ./targets/circular_dep_a.sh
     # shellcheck disable=SC2016  # intentionally not expanding backticks
-    assert_stderr '^FATAL: Circular dependency detected between `circular_dep_a` and `circular_dep_b`$'
+    assert_stderr '^FATAL: Circular dependency detected at `.+/targets/circular_dep_a\.sh`:
+.+/targets/circular_dep_a\.sh
+-> .+/targets/circular_dep_b\.sh
+-> .+/targets/circular_dep_a\.sh$'
     assert_exit_code 1
     assert_no_stdout
 }
