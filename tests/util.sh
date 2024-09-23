@@ -26,7 +26,7 @@ fail() {
 usecase() {
     mkdir --parent "${TEST_CWD}/targets"
     for t in "${@}"; do
-        cp "${REPO_HOME}/tests/cases/${t}.sh" "${TEST_CWD}/targets"
+        cp "${REPO_HOME}/tests/cases/${t}.bl" "${TEST_CWD}/targets"
     done
 }
 

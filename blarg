@@ -22,7 +22,7 @@ depends_on() {
     local this_dir
     this_dir="$(dirname "${BLARG_TARGET}")"
     for script_basename in "${@}"; do
-        "${this_dir}/${script_basename}.sh"
+        "${this_dir}/${script_basename}.bl"
     done
 }
 
