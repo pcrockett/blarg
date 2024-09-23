@@ -26,6 +26,10 @@ depends_on() {
     done
 }
 
+"""
+
+
+BASE = """
 reached_if() {
     false
 }
@@ -84,7 +88,7 @@ def main() -> int:
     with open(args.script_path, "r", encoding="utf8") as f:
         script = "".join(f.readlines())
 
-    full_script = STDLIB + script + EXECUTOR
+    full_script = "".join([STDLIB, BASE, script, EXECUTOR])
 
     if args.dump_src:
         print(full_script)
