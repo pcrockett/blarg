@@ -11,6 +11,9 @@ versions=(
 )
 
 main() {
+    if [ "${#}" -gt 0 ]; then
+        versions=("${@}")
+    fi
     for v in "${versions[@]}"; do
         if [ "${BLARG_SKIP_BUILD:-}" == "" ]; then
             docker build --build-arg "PYTHON_VERSION=${v}" --tag "blarg-ci:${v}" .

@@ -100,10 +100,11 @@ def main() -> int:
         running_targets = []
 
     if args.script_path in running_targets:
+        stack_seperator = "\n-> "
         print(
             f"FATAL: Circular dependency detected at `{args.script_path}`:\n"
-            f"{'\n-> '.join(running_targets)}\n"
-            f"-> {args.script_path}",
+            f"{stack_seperator.join(running_targets)}"
+            f"{stack_seperator}{args.script_path}",
             file=sys.stderr,
         )
         return 1
