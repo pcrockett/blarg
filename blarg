@@ -13,6 +13,8 @@ VERSION = "0.0.1"
 
 
 STDLIB = """
+
+# Generated code
 panic() {
     echo "FATAL: ${*}" >&2
     exit 1
@@ -30,6 +32,8 @@ depends_on() {
 
 
 BASE = """
+
+# Generated code
 reached_if() {
     false
 }
@@ -43,6 +47,7 @@ apply() {
 
 EXECUTOR = """
 
+# Generated code
 if ! reached_if &> /dev/null; then
     apply
 fi
@@ -78,6 +83,35 @@ def parse_args() -> CliArgs:
     )
 
 
+def dump_file_as_string(path: str) -> str:
+    with open(path, "r", encoding="utf8") as f:
+        return "".join(f.readlines())
+
+
+def list_dir_if_exists(dir_path: str) -> []:
+    try:
+        return [
+            os.path.abspath(os.path.join(dir_path, x))
+            for x in sorted(os.listdir(dir_path))
+        ]
+    except FileNotFoundError:
+        return []
+
+
+def generate_script(script_path: str) -> str:
+    script = f"# {script_path}\n" + dump_file_as_string(script_path)
+    script_parts = [STDLIB]
+
+    lib_d_dir = os.path.join(os.path.curdir, "lib.d")
+
+    for file in list_dir_if_exists(lib_d_dir):
+        if not file.endswith(".sh") and not file.endswith(".bash"):
+            continue
+        script_parts.append(f"# {file}\n{dump_file_as_string(file)}\n")
+
+    return "".join(script_parts + [BASE, script, EXECUTOR])
+
+
 def main() -> int:
     args = parse_args()
 
@@ -85,10 +119,7 @@ def main() -> int:
         print(f"blarg version {VERSION}")
         return 0
 
-    with open(args.script_path, "r", encoding="utf8") as f:
-        script = "".join(f.readlines())
-
-    full_script = "".join([STDLIB, BASE, script, EXECUTOR])
+    full_script = generate_script(args.script_path)
 
     if args.dump_src:
         print(full_script)

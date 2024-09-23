@@ -30,6 +30,10 @@ usecase() {
     done
 }
 
+use_lib() {
+    cp -r "${REPO_HOME}/tests/cases/lib.d" "${TEST_CWD}"
+}
+
 # shellcheck disable=SC2034  # this function returns data via variables
 capture_output() {
     local stderr_file stdout_file

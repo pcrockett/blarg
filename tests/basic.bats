@@ -62,3 +62,14 @@ B!$'
     assert_exit_code 1
     assert_no_stdout
 }
+
+@test 'lib.d - exists - is used' {
+    usecase lib_d
+    use_lib
+    capture_output ./targets/lib_d.bl
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^function A was called!
+function B was called!
+function C was called!$'
+}
