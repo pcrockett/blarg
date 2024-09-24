@@ -7,7 +7,7 @@ import sys
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 
 VERSION = "0.0.1"
@@ -84,30 +84,22 @@ def parse_args() -> CliArgs:
     )
 
 
-def dump_file_as_string(path: str) -> str:
-    with open(path, "r", encoding="utf8") as f:
-        return "".join(f.readlines())
-
-
-def list_dir_if_exists(dir_path: str) -> []:
+def list_dir_if_exists(dir_path: Path) -> List[Path]:
     try:
-        return sorted(
-            [str(p.resolve()) for p in Path(dir_path).iterdir() if not p.is_dir()]
-        )
-    except FileNotFoundError:
+        return sorted([p.resolve() for p in dir_path.iterdir() if not p.is_dir()])
+    except (FileNotFoundError, NotADirectoryError):
         return []
 
 
-def generate_script(script_path: str) -> str:
-    script = f"# {script_path}\n" + dump_file_as_string(script_path)
+def generate_script(script_path: Path) -> str:
+    script = f"# {script_path}\n" + script_path.read_text("utf8")
     script_parts = [STDLIB]
 
-    lib_d_dir = os.path.join(os.path.curdir, "lib.d")
-
+    lib_d_dir = Path("lib.d")  # lib.d dir in current working directory
     for file in list_dir_if_exists(lib_d_dir):
-        if not file.endswith(".sh") and not file.endswith(".bash"):
+        if not str(file).endswith(".sh") and not str(file).endswith(".bash"):
             continue
-        script_parts.append(f"# {file}\n{dump_file_as_string(file)}\n")
+        script_parts.append(f"# {file}\n{file.read_text('utf8')}\n")
 
     return "".join(script_parts + [BASE, script, EXECUTOR])
 
@@ -119,7 +111,7 @@ def main() -> int:
         print(f"blarg version {VERSION}")
         return 0
 
-    full_script = generate_script(args.script_path)
+    full_script = generate_script(Path(args.script_path))
 
     if args.dump_src:
         print(full_script)
