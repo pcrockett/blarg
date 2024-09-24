@@ -73,3 +73,13 @@ B!$'
 function B was called!
 function C was called!$'
 }
+
+@test 'depends_on - many targets depend on same target - dependency executed once' {
+    usecase should_run_once run_once_a run_once_b
+    capture_output ./targets/run_once_b.bl
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^Created .has-run file.
+A
+B$'
+}

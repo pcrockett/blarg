@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -7,6 +8,7 @@ import sys
 
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
@@ -111,10 +113,8 @@ def main() -> int:
         print(f"blarg version {VERSION}")
         return 0
 
-    full_script = generate_script(Path(args.script_path))
-
     if args.dump_src:
-        print(full_script)
+        print(generate_script(Path(args.script_path)))
         return 0
 
     env = os.environ
@@ -139,12 +139,30 @@ def main() -> int:
     running_targets.append(args.script_path)
     env["BLARG_RUNNING_TARGETS"] = json.dumps(running_targets)
 
-    result = subprocess.run(
-        ["bash", "-Eeuo", "pipefail"],
-        input=full_script,
-        encoding="utf8",
-        env=env,
-    )
+    if temp_dir_path := env.get("BLARG_RUN_DIR"):
+        temp_dir = None  # a different blarg process is managing this directory
+    else:
+        temp_dir = TemporaryDirectory()
+        temp_dir_path = temp_dir.name
+        env["BLARG_RUN_DIR"] = temp_dir_path
+
+    script_path_digest = hashlib.sha1(args.script_path.encode("utf8")).hexdigest()
+    marker_file = Path(temp_dir_path) / script_path_digest
+    if marker_file.exists():
+        return 0  # this target has already been run
+    else:
+        marker_file.touch()
+
+    try:
+        result = subprocess.run(
+            ["bash", "-Eeuo", "pipefail"],
+            input=generate_script(Path(args.script_path)),
+            encoding="utf8",
+            env=env,
+        )
+    finally:
+        if temp_dir is not None:
+            temp_dir.cleanup()
 
     return result.returncode
 
