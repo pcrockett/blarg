@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 
@@ -90,10 +91,9 @@ def dump_file_as_string(path: str) -> str:
 
 def list_dir_if_exists(dir_path: str) -> []:
     try:
-        return [
-            os.path.abspath(os.path.join(dir_path, x))
-            for x in sorted(os.listdir(dir_path))
-        ]
+        return sorted(
+            [str(p.resolve()) for p in Path(dir_path).iterdir() if not p.is_dir()]
+        )
     except FileNotFoundError:
         return []
 
