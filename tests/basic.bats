@@ -2,6 +2,13 @@
 
 source tests/util.sh
 
+@test 'no args - always - displays help' {
+    capture_output blarg
+    assert_exit_code 0
+    assert_no_stderr
+    assert_stdout '^usage: blarg'
+}
+
 @test 'simple apply - always - executes apply' {
     usecase simple_apply
     capture_output ./targets/simple_apply.bl

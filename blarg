@@ -64,21 +64,25 @@ class CliArgs:
     version: bool
 
 
+class CliParser(argparse.ArgumentParser):
+    def __init__(self):
+        super().__init__("blarg", description="Execute bash target files")
+        self.add_argument(
+            "script_path", help="Script file to execute", default=None, nargs="?"
+        )
+        self.add_argument(
+            "--dump-src",
+            "-d",
+            help="Don't run the script; just dump the full source that would be executed by Bash",
+            action="store_true",
+        )
+        self.add_argument(
+            "--version", "-v", help="Display version number", action="store_true"
+        )
+
+
 def parse_args() -> CliArgs:
-    parser = argparse.ArgumentParser("blarg", description="Execute bash target files")
-    parser.add_argument(
-        "script_path", help="Script file to execute", default=None, nargs="?"
-    )
-    parser.add_argument(
-        "--dump-src",
-        "-d",
-        help="Don't run the script; just dump the full source that would be executed by Bash",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--version", "-v", help="Display version number", action="store_true"
-    )
-    args = parser.parse_args()
+    args = CliParser().parse_args()
     return CliArgs(
         os.path.abspath(args.script_path) if args.script_path else None,
         args.dump_src,
@@ -111,6 +115,10 @@ def main() -> int:
 
     if args.version:
         print(f"blarg version {VERSION}")
+        return 0
+
+    if not args.script_path:
+        CliParser().print_help()
         return 0
 
     if args.dump_src:
