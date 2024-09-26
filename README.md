@@ -1,5 +1,9 @@
 # blarg
 
+A blunt instrument for automating configuration with Bash.
+
+## Example
+
 Imagine you have the following repository structure:
 
 ```plaintext
