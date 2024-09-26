@@ -91,14 +91,46 @@ A
 B$'
 }
 
-@test 'status - targets not reached - shows running' {
+@test 'verbose - always - sets env var in targets' {
+    usecase verbose
+    capture_output blarg --verbose ./targets/verbose.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^targets/verbose \[running\.\.\.\]
+BLARG_VERBOSE: True
+targets/verbose \[done\]$'
+}
+
+@test 'verbose - always - inherited from parent target' {
+    usecase verbose verbose_parent
+    capture_output blarg --verbose ./targets/verbose_parent.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^targets/verbose_parent \[running\.\.\.\]
+targets/verbose \[running\.\.\.\]
+BLARG_VERBOSE: True
+targets/verbose \[done\]
+BLARG_VERBOSE: True
+targets/verbose_parent \[done\]$'
+}
+
+@test 'verbose - targets not reached - shows running' {
+    usecase basic foobar
+    capture_output blarg --verbose targets/basic.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^targets/basic \[running\.\.\.\]
+targets/foobar \[running\.\.\.\]
+foobar!
+targets/foobar \[done\]
+hello, there\.\.\.
+targets/basic \[done\]$'
+}
+
+@test 'verbose - targets already reached - is silent' {
     fail "not implemented yet"
 }
 
-@test 'status - targets already reached - is silent' {
-    fail "not implemented yet"
-}
-
-@test 'status - targets already executed - is silent' {
+@test 'verbose - targets already executed - is silent' {
     fail "not implemented yet"
 }

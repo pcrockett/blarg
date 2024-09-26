@@ -59,9 +59,10 @@ fi
 
 @dataclass
 class CliArgs:
-    script_path: Optional[str]
+    script_path: Optional[Path]
     dump_src: bool
     version: bool
+    verbose: bool
 
 
 class CliParser(argparse.ArgumentParser):
@@ -77,16 +78,20 @@ class CliParser(argparse.ArgumentParser):
             action="store_true",
         )
         self.add_argument(
-            "--version", "-v", help="Display version number", action="store_true"
+            "--version", help="Display version number", action="store_true"
+        )
+        self.add_argument(
+            "--verbose", "-v", help="Display verbose output", action="store_true"
         )
 
 
 def parse_args() -> CliArgs:
     args = CliParser().parse_args()
     return CliArgs(
-        os.path.abspath(args.script_path) if args.script_path else None,
+        Path(args.script_path) if args.script_path else None,
         args.dump_src,
         args.version,
+        args.verbose,
     )
 
 
@@ -122,11 +127,19 @@ def main() -> int:
         return 0
 
     if args.dump_src:
-        print(generate_script(Path(args.script_path)))
+        print(generate_script(args.script_path))
         return 0
 
     env = os.environ
-    env["BLARG_TARGET"] = args.script_path
+    resolved_path = args.script_path.resolve()
+    env["BLARG_TARGET"] = str(resolved_path)
+
+    is_verbose = args.verbose or "BLARG_VERBOSE" in env
+    if is_verbose:
+        env["BLARG_VERBOSE"] = str(is_verbose)
+
+    target_name = str(resolved_path.with_suffix(""))
+    _, _, target_name = target_name.partition(f"{os.getcwd()}/")
 
     running_targets_unparsed = env.get("BLARG_RUNNING_TARGETS")
     if running_targets_unparsed:
@@ -134,17 +147,17 @@ def main() -> int:
     else:
         running_targets = []
 
-    if args.script_path in running_targets:
+    if str(resolved_path) in running_targets:
         stack_seperator = "\n-> "
         print(
-            f"FATAL: Circular dependency detected at `{args.script_path}`:\n"
+            f"FATAL: Circular dependency detected at `{resolved_path}`:\n"
             f"{stack_seperator.join(running_targets)}"
-            f"{stack_seperator}{args.script_path}",
+            f"{stack_seperator}{resolved_path}",
             file=sys.stderr,
         )
         return 1
 
-    running_targets.append(args.script_path)
+    running_targets.append(str(resolved_path))
     env["BLARG_RUNNING_TARGETS"] = json.dumps(running_targets)
 
     if temp_dir_path := env.get("BLARG_RUN_DIR"):
@@ -154,23 +167,30 @@ def main() -> int:
         temp_dir_path = temp_dir.name
         env["BLARG_RUN_DIR"] = temp_dir_path
 
-    script_path_digest = hashlib.sha1(args.script_path.encode("utf8")).hexdigest()
+    script_path_digest = hashlib.sha1(str(resolved_path).encode("utf8")).hexdigest()
     marker_file = Path(temp_dir_path) / script_path_digest
     if marker_file.exists():
         return 0  # this target has already been run
     else:
         marker_file.touch()
 
+    if is_verbose:
+        print(f"{target_name} [running...]")
+        sys.stdout.flush()
+
     try:
         result = subprocess.run(
             ["bash", "-Eeuo", "pipefail"],
-            input=generate_script(Path(args.script_path)),
+            input=generate_script(args.script_path),
             encoding="utf8",
             env=env,
         )
     finally:
         if temp_dir is not None:
             temp_dir.cleanup()
+        if is_verbose:
+            sys.stdout.flush()
+            print (f"{target_name} [done]")
 
     return result.returncode
 
