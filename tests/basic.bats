@@ -90,3 +90,15 @@ function C was called!$'
 A
 B$'
 }
+
+@test 'status - targets not reached - shows running' {
+    fail "not implemented yet"
+}
+
+@test 'status - targets already reached - is silent' {
+    fail "not implemented yet"
+}
+
+@test 'status - targets already executed - is silent' {
+    fail "not implemented yet"
+}
