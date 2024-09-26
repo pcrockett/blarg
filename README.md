@@ -4,12 +4,12 @@ Imagine you have the following repository structure:
 
 ```plaintext
 |- targets/
-|  |- apt_updated.bl
-|  |- cowsay_installed.bl
-|  |- moo.bl
+|  |- apt_updated.bash
+|  |- cowsay_installed.bash
+|  |- moo.bash
 ```
 
-In `apt_updated.bl`:
+In `apt_updated.bash`:
 
 ```bash
 #!/usr/bin/env blarg
@@ -19,7 +19,7 @@ apply() {
 }
 ```
 
-In `cowsay_installed.bl`:
+In `cowsay_installed.bash`:
 
 ```bash
 #!/usr/bin/env blarg
@@ -35,7 +35,7 @@ apply() {
 }
 ```
 
-And in `moo.bl`:
+And in `moo.bash`:
 
 ```bash
 #!/usr/bin/env blarg
@@ -50,7 +50,7 @@ apply() {
 Assuming all these files are executable, you can then run:
 
 ```bash
-./targets/moo.bl
+./targets/moo.bash
 ```
 
 This will automatically detect if you need to install `cowsay`, and if so, will run
