@@ -23,6 +23,12 @@ panic() {
     exit 1
 }
 
+log_verbose() {
+    if [ "${BLARG_VERBOSE+x}" == "x" ]; then
+        echo "${*}"
+    fi
+}
+
 depends_on() {
     local this_dir
     this_dir="$(dirname "${BLARG_TARGET}")"
@@ -52,7 +58,9 @@ EXECUTOR = """
 
 # Generated code
 if ! reached_if &> /dev/null; then
+    log_verbose "${BLARG_TARGET_NAME} [running...]"
     apply
+    log_verbose "${BLARG_TARGET_NAME} [done]"
 fi
 """
 
@@ -140,6 +148,7 @@ def main() -> int:
 
     target_name = str(resolved_path.with_suffix(""))
     _, _, target_name = target_name.partition(f"{os.getcwd()}/")
+    env["BLARG_TARGET_NAME"] = target_name
 
     running_targets_unparsed = env.get("BLARG_RUNNING_TARGETS")
     if running_targets_unparsed:
@@ -174,10 +183,6 @@ def main() -> int:
     else:
         marker_file.touch()
 
-    if is_verbose:
-        print(f"{target_name} [running...]")
-        sys.stdout.flush()
-
     try:
         result = subprocess.run(
             ["bash", "-Eeuo", "pipefail"],
@@ -188,9 +193,6 @@ def main() -> int:
     finally:
         if temp_dir is not None:
             temp_dir.cleanup()
-        if is_verbose:
-            sys.stdout.flush()
-            print (f"{target_name} [done]")
 
     return result.returncode
 

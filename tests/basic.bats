@@ -106,10 +106,10 @@ targets/verbose \[done\]$'
     capture_output blarg --verbose ./targets/verbose_parent.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/verbose_parent \[running\.\.\.\]
-targets/verbose \[running\.\.\.\]
+    assert_stdout '^targets/verbose \[running\.\.\.\]
 BLARG_VERBOSE: True
 targets/verbose \[done\]
+targets/verbose_parent \[running\.\.\.\]
 BLARG_VERBOSE: True
 targets/verbose_parent \[done\]$'
 }
@@ -119,16 +119,20 @@ targets/verbose_parent \[done\]$'
     capture_output blarg --verbose targets/basic.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/basic \[running\.\.\.\]
-targets/foobar \[running\.\.\.\]
+    assert_stdout '^targets/foobar \[running\.\.\.\]
 foobar!
 targets/foobar \[done\]
+targets/basic \[running\.\.\.\]
 hello, there\.\.\.
 targets/basic \[done\]$'
 }
 
 @test 'verbose - targets already reached - is silent' {
-    fail "not implemented yet"
+    usecase reached_if_true
+    capture_output blarg --verbose targets/reached_if_true.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_no_stdout
 }
 
 @test 'verbose - targets already executed - is silent' {
