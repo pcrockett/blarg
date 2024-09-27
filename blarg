@@ -175,9 +175,10 @@ def main() -> int:
         temp_dir = TemporaryDirectory()
         temp_dir_path = temp_dir.name
         env["BLARG_RUN_DIR"] = temp_dir_path
+        os.mkdir(f"{temp_dir_path}/.target-markers")
 
     script_path_digest = hashlib.sha1(str(resolved_path).encode("utf8")).hexdigest()
-    marker_file = Path(temp_dir_path) / script_path_digest
+    marker_file = Path(temp_dir_path) / ".target-markers" / script_path_digest
     if marker_file.exists():
         return 0  # this target has already been run
     else:
