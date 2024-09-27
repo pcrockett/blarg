@@ -134,7 +134,3 @@ targets/basic \[done\]$'
     assert_exit_code 0
     assert_no_stdout
 }
-
-@test 'verbose - targets already executed - is silent' {
-    fail "not implemented yet"
-}
