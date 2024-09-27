@@ -10,3 +10,7 @@ lint:
 ci:
 	@bin/python-version-test.sh
 .PHONY: ci
+
+install:
+	cp blarg ~/.local/bin
+.PHONY: install
