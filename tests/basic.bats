@@ -142,10 +142,10 @@ targets/basic \[done\]$'
     assert_exit_code 0
     stdout_regex="$(cat <<EOF
 ^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
-BLARG_RUN_DIR=/tmp/[[:alnum:]]+
+BLARG_RUN_DIR=/tmp/[[:print:]]+
 BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
 BLARG_TARGET_NAME=targets/print_env
-BLARG_TARGET=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash$
+BLARG_TARGET_PATH=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash$
 EOF
 )"
     assert_stdout "${stdout_regex}"

@@ -31,7 +31,7 @@ log_verbose() {
 
 depends_on() {
     local this_dir
-    this_dir="$(dirname "${BLARG_TARGET}")"
+    this_dir="$(dirname "${BLARG_TARGET_PATH}")"
     for script_basename in "${@}"; do
         "${this_dir}/${script_basename}.bash"
     done
@@ -140,7 +140,7 @@ def main() -> int:
 
     env = os.environ
     resolved_path = args.script_path.resolve()
-    env["BLARG_TARGET"] = str(resolved_path)
+    env["BLARG_TARGET_PATH"] = str(resolved_path)
 
     is_verbose = args.verbose or "BLARG_VERBOSE" in env
     if is_verbose:
