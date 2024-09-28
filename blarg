@@ -146,6 +146,9 @@ def main() -> int:
     if is_verbose:
         env["BLARG_VERBOSE"] = str(is_verbose)
 
+    if not env.get("BLARG_CWD"):
+        env["BLARG_CWD"] = os.getcwd()
+
     target_name = str(resolved_path.with_suffix(""))
     _, _, target_name = target_name.partition(f"{os.getcwd()}/")
     env["BLARG_TARGET_NAME"] = target_name
