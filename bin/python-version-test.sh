@@ -15,7 +15,7 @@ main() {
         versions=("${@}")
     fi
     for v in "${versions[@]}"; do
-        if [ "${BLARG_SKIP_BUILD:-}" == "" ]; then
+        if [ "${SKIP_BLARG_DOCKER_BUILD:-}" == "" ]; then
             docker build --build-arg "PYTHON_VERSION=${v}" --tag "blarg-ci:${v}" .
         fi
         docker run --rm --mount "type=bind,source=.,target=/app,readonly" "blarg-ci:${v}"

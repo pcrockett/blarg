@@ -134,3 +134,19 @@ targets/basic \[done\]$'
     assert_exit_code 0
     assert_no_stdout
 }
+
+@test 'environment - always - populated' {
+    usecase print_env
+    capture_output ./targets/print_env.bash
+    assert_no_stderr
+    assert_exit_code 0
+    stdout_regex="$(cat <<EOF
+^BLARG_RUN_DIR=/tmp/[[:alnum:]]+
+BLARG_RUNNING_TARGETS=\[".+"]
+BLARG_TARGET_NAME=targets/print_env
+BLARG_TARGET=.+/targets/print_env\.bash$
+EOF
+)"
+    assert_stdout "${stdout_regex}"
+
+}
