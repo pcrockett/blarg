@@ -23,15 +23,20 @@ fail() {
     exit 1
 }
 
-usecase() {
+use_target() {
     mkdir --parent "${TEST_CWD}/targets"
     for t in "${@}"; do
-        cp "${REPO_HOME}/tests/cases/${t}.bash" "${TEST_CWD}/targets"
+        local src_path="${REPO_HOME}/tests/targets/${t}"
+        if [ -d "${src_path}" ]; then
+            cp -r "${src_path}" "${TEST_CWD}/targets"
+        else
+            cp "${src_path}.bash" "${TEST_CWD}/targets"
+        fi
     done
 }
 
 use_lib() {
-    cp -r "${REPO_HOME}/tests/cases/lib.d" "${TEST_CWD}"
+    cp -r "${REPO_HOME}/tests/lib.d" "${TEST_CWD}"
 }
 
 # shellcheck disable=SC2034  # this function returns data via variables
