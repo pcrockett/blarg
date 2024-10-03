@@ -1,5 +1,7 @@
 # blarg
 
+_Work in progress, still experimenting._
+
 A blunt instrument for automating configuration with Bash.
 
 ## Example
