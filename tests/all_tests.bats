@@ -158,3 +158,12 @@ EOF
     assert_stdout "${stdout_regex}"
 
 }
+
+@test 'usecase dir - always - executes main target' {
+    use_target some-usecase
+    capture_output blarg ./targets/some-usecase
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^targets/some-usecase/dependency
+targets/some-usecase/main$'
+}

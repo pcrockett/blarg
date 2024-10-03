@@ -134,12 +134,16 @@ def main() -> int:
         CliParser().print_help()
         return 0
 
+    script_path = args.script_path
+    if script_path.is_dir():
+        script_path = script_path / "main.bash"
+
     if args.dump_src:
-        print(generate_script(args.script_path))
+        print(generate_script(script_path))
         return 0
 
     env = os.environ
-    resolved_path = args.script_path.resolve()
+    resolved_path = script_path.resolve()
     env["BLARG_TARGET_PATH"] = str(resolved_path)
 
     is_verbose = args.verbose or "BLARG_VERBOSE" in env
@@ -190,7 +194,7 @@ def main() -> int:
     try:
         result = subprocess.run(
             ["bash", "-Eeuo", "pipefail"],
-            input=generate_script(args.script_path),
+            input=generate_script(script_path),
             encoding="utf8",
             env=env,
         )
