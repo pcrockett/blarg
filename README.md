@@ -28,13 +28,12 @@ In `cowsay_installed.bash`:
 ```bash
 #!/usr/bin/env blarg
 
-depends_on apt_updated
-
 reached_if() {
   command -v cowsay
 }
 
 apply() {
+  depends_on apt_updated
   sudo apt-get install --yes cowsay
 }
 ```
