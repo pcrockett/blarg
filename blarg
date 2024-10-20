@@ -16,8 +16,8 @@ VERSION = "0.0.2"
 
 
 STDLIB = """
+#!/usr/bin/env bash
 
-# Generated code
 BLARG_TARGET_DEPENDENCIES=()
 
 panic() {
@@ -32,7 +32,7 @@ log_verbose() {
 }
 
 depends_on() {
-    BLARG_TARGET_DEPENDENCIES+=("${@}")
+    BLARG_TARGET_DEPENDENCIES+=("$@")
 }
 
 apply_target() {
@@ -47,7 +47,6 @@ apply_target() {
 
 BASE = """
 
-# Generated code
 reached_if() {
     false
 }
@@ -58,14 +57,9 @@ unset -f apply  # make sure no `apply` function has been created previously
 
 
 EXECUTOR = """
-# Generated code
-exec_dependencies() {
-    apply_target "${BLARG_TARGET_DEPENDENCIES[@]}"
-}
-
 if ! reached_if &> /dev/null; then
     log_verbose "${BLARG_TARGET_NAME} [running...]"
-    exec_dependencies
+    apply_target "${BLARG_TARGET_DEPENDENCIES[@]}"
     test "$(type -t apply)" != "function" || apply
     log_verbose "${BLARG_TARGET_NAME} [done]"
 fi
@@ -127,7 +121,7 @@ def generate_script(script_path: Path) -> str:
             continue
         script_parts.append(f"# {file}\n{file.read_text('utf8')}\n")
 
-    return "".join(script_parts + [BASE, script, EXECUTOR])
+    return "".join(script_parts + [BASE, script, EXECUTOR]).lstrip()
 
 
 def main() -> int:

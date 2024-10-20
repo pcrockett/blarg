@@ -201,3 +201,11 @@ targets/reached_if_false \[done\]
 targets/panic \[running\.\.\.\]$'
     assert_stderr '^FATAL: OMG panic!$'
 }
+
+@test 'dump-src - always - begins with shebang' {
+    use_target foobar
+    capture_output blarg --dump-src targets/foobar.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^#!/usr/bin/env bash'
+}
