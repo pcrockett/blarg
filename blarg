@@ -12,12 +12,14 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 
 STDLIB = """
 
 # Generated code
+BLARG_TARGET_DEPENDENCIES=()
+
 panic() {
     echo "FATAL: ${*}" >&2
     exit 1
@@ -30,11 +32,7 @@ log_verbose() {
 }
 
 depends_on() {
-    local this_dir
-    this_dir="$(dirname "${BLARG_TARGET_PATH}")"
-    for script_basename in "${@}"; do
-        "${this_dir}/${script_basename}.bash"
-    done
+    BLARG_TARGET_DEPENDENCIES+=("${@}")
 }
 
 """
@@ -47,19 +45,25 @@ reached_if() {
     false
 }
 
-apply() {
-    true
-}
+unset -f apply  # make sure no `apply` function has been created previously
 
 """
 
 
 EXECUTOR = """
-
 # Generated code
+exec_dependencies() {
+    local this_dir
+    this_dir="$(dirname "${BLARG_TARGET_PATH}")"
+    for script_basename in "${BLARG_TARGET_DEPENDENCIES[@]}"; do
+        "${this_dir}/${script_basename}.bash"
+    done
+}
+
 if ! reached_if &> /dev/null; then
     log_verbose "${BLARG_TARGET_NAME} [running...]"
-    apply
+    exec_dependencies
+    test "$(type -t apply)" != "function" || apply
     log_verbose "${BLARG_TARGET_NAME} [done]"
 fi
 """

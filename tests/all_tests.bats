@@ -113,10 +113,10 @@ targets/verbose \[done\]$'
     capture_output blarg --verbose ./targets/verbose_parent.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/verbose \[running\.\.\.\]
+    assert_stdout '^targets/verbose_parent \[running\.\.\.\]
+targets/verbose \[running\.\.\.\]
 BLARG_VERBOSE: True
 targets/verbose \[done\]
-targets/verbose_parent \[running\.\.\.\]
 BLARG_VERBOSE: True
 targets/verbose_parent \[done\]$'
 }
@@ -126,10 +126,10 @@ targets/verbose_parent \[done\]$'
     capture_output blarg --verbose targets/basic.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/foobar \[running\.\.\.\]
+    assert_stdout '^targets/basic \[running\.\.\.\]
+targets/foobar \[running\.\.\.\]
 foobar!
 targets/foobar \[done\]
-targets/basic \[running\.\.\.\]
 hello, there\.\.\.
 targets/basic \[done\]$'
 }
@@ -166,4 +166,20 @@ EOF
     assert_exit_code 0
     assert_stdout '^targets/some-usecase/dependency
 targets/some-usecase/main$'
+}
+
+@test 'verbose - no apply defined - shows during dependencies' {
+    use_target depends_on_only dependency_a dependency_b
+    export BLARG_VERBOSE=1
+    capture_output ./targets/depends_on_only.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^targets/depends_on_only \[running\.\.\.\]
+targets/dependency_a \[running\.\.\.\]
+A!
+targets/dependency_a \[done\]
+targets/dependency_b \[running\.\.\.\]
+B!
+targets/dependency_b \[done\]
+targets/depends_on_only \[done\]$'
 }
