@@ -1,4 +1,9 @@
 #!/usr/bin/env bats
+#
+# variable changes will be discarded. all tests run in subshells.
+# shellcheck disable=SC2030
+# shellcheck disable=SC2031
+#
 
 source tests/util.sh
 
@@ -182,4 +187,17 @@ targets/dependency_b \[running\.\.\.\]
 B!
 targets/dependency_b \[done\]
 targets/depends_on_only \[done\]$'
+}
+
+@test 'apply_target - always - applies other targets' {
+    use_target dynamic_apply reached_if_true reached_if_false panic
+    export BLARG_VERBOSE=1
+    capture_output ./targets/dynamic_apply.bash
+    assert_exit_code 1
+    assert_stdout '^targets/dynamic_apply \[running\.\.\.\]
+targets/reached_if_false \[running\.\.\.\]
+hi
+targets/reached_if_false \[done\]
+targets/panic \[running\.\.\.\]$'
+    assert_stderr '^FATAL: OMG panic!$'
 }

@@ -35,6 +35,13 @@ depends_on() {
     BLARG_TARGET_DEPENDENCIES+=("${@}")
 }
 
+apply_target() {
+    local this_dir
+    this_dir="$(dirname "${BLARG_TARGET_PATH}")"
+    for script_basename in "$@"; do
+        "${this_dir}/${script_basename}.bash"
+    done
+}
 """
 
 
@@ -53,11 +60,7 @@ unset -f apply  # make sure no `apply` function has been created previously
 EXECUTOR = """
 # Generated code
 exec_dependencies() {
-    local this_dir
-    this_dir="$(dirname "${BLARG_TARGET_PATH}")"
-    for script_basename in "${BLARG_TARGET_DEPENDENCIES[@]}"; do
-        "${this_dir}/${script_basename}.bash"
-    done
+    apply_target "${BLARG_TARGET_DEPENDENCIES[@]}"
 }
 
 if ! reached_if &> /dev/null; then
