@@ -139,12 +139,13 @@ hello, there\.\.\.
 targets/basic \[done\]$'
 }
 
-@test 'verbose - targets already reached - is silent' {
+@test 'verbose - targets already reached - not silent' {
     use_target reached_if_true
     capture_output blarg --verbose targets/reached_if_true.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_no_stdout
+    assert_stdout '^targets/reached_if_true \[running\.\.\.\]
+targets/reached_if_true \[done\]$'
 }
 
 @test 'environment - always - populated' {
@@ -195,6 +196,8 @@ targets/depends_on_only \[done\]$'
     capture_output ./targets/dynamic_apply.bash
     assert_exit_code 1
     assert_stdout '^targets/dynamic_apply \[running\.\.\.\]
+targets/reached_if_true \[running\.\.\.\]
+targets/reached_if_true \[done\]
 targets/reached_if_false \[running\.\.\.\]
 hi
 targets/reached_if_false \[done\]
@@ -208,4 +211,16 @@ targets/panic \[running\.\.\.\]$'
     assert_no_stderr
     assert_exit_code 0
     assert_stdout '^#!/usr/bin/env bash'
+}
+
+@test 'reached_if - returns true - still applies dependencies' {
+    use_target reached_if_true_with_deps foobar
+    capture_output blarg --verbose ./targets/reached_if_true_with_deps.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^targets/reached_if_true_with_deps \[running\.\.\.\]
+targets/foobar \[running\.\.\.\]
+foobar!
+targets/foobar \[done\]
+targets/reached_if_true_with_deps \[done\]$'
 }

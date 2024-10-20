@@ -57,12 +57,14 @@ unset -f apply  # make sure no `apply` function has been created previously
 
 
 EXECUTOR = """
+log_verbose "${BLARG_TARGET_NAME} [running...]"
+apply_target "${BLARG_TARGET_DEPENDENCIES[@]}"
+
 if ! reached_if &> /dev/null; then
-    log_verbose "${BLARG_TARGET_NAME} [running...]"
-    apply_target "${BLARG_TARGET_DEPENDENCIES[@]}"
     test "$(type -t apply)" != "function" || apply
-    log_verbose "${BLARG_TARGET_NAME} [done]"
 fi
+
+log_verbose "${BLARG_TARGET_NAME} [done]"
 """
 
 
