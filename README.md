@@ -35,7 +35,7 @@ reached_if() {
 }
 
 apply() {
-  depends_on apt_updated
+  apply_target apt_updated
   sudo apt-get install --yes cowsay
 }
 ```
