@@ -78,8 +78,8 @@ B!$'
 .+/targets/circular_dep_a\.bash
 -> .+/targets/circular_dep_b\.bash
 -> .+/targets/circular_dep_a\.bash$'
-    assert_exit_code 1
     assert_no_stdout
+    assert_exit_code 1
 }
 
 @test 'lib.d - exists - is used' {
@@ -223,4 +223,12 @@ targets/foobar \[running\.\.\.\]
 foobar!
 targets/foobar \[done\]
 targets/reached_if_true_with_deps \[done\]$'
+}
+
+@test 'reached_if - encounters error - returns early' {
+    use_target reached_if_true_with_error
+    capture_output blarg ./targets/reached_if_true_with_error.bash
+    assert_no_stderr
+    assert_stdout '^You should see this\.$'
+    assert_exit_code 0
 }

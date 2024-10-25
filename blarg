@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.0.2"
+VERSION = "0.0.3"
 
 
 STDLIB = """
@@ -37,9 +37,9 @@ depends_on() {
 
 apply_target() {
     local this_dir
-    this_dir="$(dirname "${BLARG_TARGET_PATH}")"
+    this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
     for script_basename in "$@"; do
-        "${this_dir}/${script_basename}.bash"
+        "${this_dir}/${script_basename}.bash" || return $?
     done
 }
 """
@@ -51,17 +51,28 @@ reached_if() {
     false
 }
 
-unset -f apply  # make sure no `apply` function has been created previously
+apply() {
+    true
+}
 
 """
 
 
 EXECUTOR = """
 log_verbose "${BLARG_TARGET_NAME} [running...]"
-apply_target "${BLARG_TARGET_DEPENDENCIES[@]}"
+apply_target "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
 
-if ! reached_if &> /dev/null; then
-    test "$(type -t apply)" != "function" || apply
+(
+    set -Eeuo pipefail
+    reached_if &> /dev/null
+)
+reached_if_result=$?
+
+if [ ${reached_if_result} -ne 0 ]; then
+    (
+        set -Eeuo pipefail
+        apply
+    ) || exit $?
 fi
 
 log_verbose "${BLARG_TARGET_NAME} [done]"
@@ -196,7 +207,7 @@ def main() -> int:
 
     try:
         result = subprocess.run(
-            ["bash", "-Eeuo", "pipefail"],
+            ["bash", "-Euo", "pipefail"],
             input=generate_script(script_path),
             encoding="utf8",
             env=env,

@@ -1,12 +1,15 @@
 #!/usr/bin/env blarg
 
+TEMP_FILE="$(mktemp)"
+
 func_a
 
 reached_if() {
-    func_b
+    func_b > "${TEMP_FILE}"
 }
 
 apply() {
-    echo "${FUNC_B_RESULT}"
+    cat "${TEMP_FILE}"
     func_c
+    rm -f "${TEMP_FILE}"
 }
