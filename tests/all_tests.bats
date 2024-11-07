@@ -119,9 +119,9 @@ targets/verbose \[done\]$'
     assert_no_stderr
     assert_exit_code 0
     assert_stdout '^targets/verbose_parent \[running\.\.\.\]
-targets/verbose \[running\.\.\.\]
+ targets/verbose \[running\.\.\.\]
 BLARG_VERBOSE: True
-targets/verbose \[done\]
+ targets/verbose \[done\]
 BLARG_VERBOSE: True
 targets/verbose_parent \[done\]$'
 }
@@ -132,9 +132,9 @@ targets/verbose_parent \[done\]$'
     assert_no_stderr
     assert_exit_code 0
     assert_stdout '^targets/basic \[running\.\.\.\]
-targets/foobar \[running\.\.\.\]
+ targets/foobar \[running\.\.\.\]
 foobar!
-targets/foobar \[done\]
+ targets/foobar \[done\]
 hello, there\.\.\.
 targets/basic \[done\]$'
 }
@@ -155,6 +155,7 @@ targets/reached_if_true \[already satisfied\]$'
     assert_exit_code 0
     stdout_regex="$(cat <<EOF
 ^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
+BLARG_INDENT=
 BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
 BLARG_RUN_DIR=/tmp/[[:print:]]+
 BLARG_TARGET_NAME=targets/print_env
@@ -181,12 +182,12 @@ targets/some-usecase/main$'
     assert_no_stderr
     assert_exit_code 0
     assert_stdout '^targets/depends_on_only \[running\.\.\.\]
-targets/dependency_a \[running\.\.\.\]
+ targets/dependency_a \[running\.\.\.\]
 A!
-targets/dependency_a \[done\]
-targets/dependency_b \[running\.\.\.\]
+ targets/dependency_a \[done\]
+ targets/dependency_b \[running\.\.\.\]
 B!
-targets/dependency_b \[done\]
+ targets/dependency_b \[done\]
 targets/depends_on_only \[done\]$'
 }
 
@@ -196,12 +197,12 @@ targets/depends_on_only \[done\]$'
     capture_output ./targets/dynamic_apply.bash
     assert_exit_code 1
     assert_stdout '^targets/dynamic_apply \[running\.\.\.\]
-targets/reached_if_true \[running\.\.\.\]
-targets/reached_if_true \[already satisfied\]
-targets/reached_if_false \[running\.\.\.\]
+ targets/reached_if_true \[running\.\.\.\]
+ targets/reached_if_true \[already satisfied\]
+ targets/reached_if_false \[running\.\.\.\]
 hi
-targets/reached_if_false \[done\]
-targets/panic \[running\.\.\.\]$'
+ targets/reached_if_false \[done\]
+ targets/panic \[running\.\.\.\]$'
     assert_stderr '^FATAL: OMG panic!$'
 }
 
@@ -219,9 +220,9 @@ targets/panic \[running\.\.\.\]$'
     assert_no_stderr
     assert_exit_code 0
     assert_stdout '^targets/reached_if_true_with_deps \[running\.\.\.\]
-targets/foobar \[running\.\.\.\]
+ targets/foobar \[running\.\.\.\]
 foobar!
-targets/foobar \[done\]
+ targets/foobar \[done\]
 targets/reached_if_true_with_deps \[already satisfied\]$'
 }
 
@@ -230,5 +231,21 @@ targets/reached_if_true_with_deps \[already satisfied\]$'
     capture_output blarg ./targets/reached_if_true_with_error.bash
     assert_no_stderr
     assert_stdout '^You should see this\.$'
+    assert_exit_code 0
+}
+
+@test 'indent - deeply-nested dependencies - indents appropriately' {
+    use_target nested_deps nested_dep_1 nested_dep_2 nested_dep_3
+    capture_output blarg --verbose ./targets/nested_deps.bash
+    assert_no_stderr
+    assert_stdout '^targets/nested_deps \[running\.\.\.\]
+ targets/nested_dep_1 \[running\.\.\.\]
+  targets/nested_dep_2 \[running\.\.\.\]
+   targets/nested_dep_3 \[running\.\.\.\]
+hi
+   targets/nested_dep_3 \[done\]
+  targets/nested_dep_2 \[done\]
+ targets/nested_dep_1 \[done\]
+targets/nested_deps \[done\]$'
     assert_exit_code 0
 }

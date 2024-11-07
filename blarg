@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.0.4"
+VERSION = "0.0.5"
 
 
 STDLIB = """
@@ -59,7 +59,7 @@ apply() {
 
 
 EXECUTOR = """
-log_verbose "${BLARG_TARGET_NAME} [running...]"
+log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
 apply_target "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
 
 (
@@ -73,9 +73,9 @@ if [ ${reached_if_result} -ne 0 ]; then
         set -Eeuo pipefail
         apply
     ) || exit $?
-    log_verbose "${BLARG_TARGET_NAME} [done]"
+    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
 else
-    log_verbose "${BLARG_TARGET_NAME} [already satisfied]"
+    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
 fi
 
 """
@@ -168,6 +168,13 @@ def main() -> int:
 
     if not env.get("BLARG_CWD"):
         env["BLARG_CWD"] = os.getcwd()
+
+    indent = env.get("BLARG_INDENT")
+    if indent is None:
+        indent = ""
+    else:
+        indent = f" {indent}"
+    env["BLARG_INDENT"] = indent
 
     target_name = str(resolved_path.with_suffix(""))
     _, _, target_name = target_name.partition(f"{os.getcwd()}/")
