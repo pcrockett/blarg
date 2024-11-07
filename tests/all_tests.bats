@@ -145,7 +145,7 @@ targets/basic \[done\]$'
     assert_no_stderr
     assert_exit_code 0
     assert_stdout '^targets/reached_if_true \[running\.\.\.\]
-targets/reached_if_true \[done\]$'
+targets/reached_if_true \[already satisfied\]$'
 }
 
 @test 'environment - always - populated' {
@@ -197,7 +197,7 @@ targets/depends_on_only \[done\]$'
     assert_exit_code 1
     assert_stdout '^targets/dynamic_apply \[running\.\.\.\]
 targets/reached_if_true \[running\.\.\.\]
-targets/reached_if_true \[done\]
+targets/reached_if_true \[already satisfied\]
 targets/reached_if_false \[running\.\.\.\]
 hi
 targets/reached_if_false \[done\]
@@ -222,7 +222,7 @@ targets/panic \[running\.\.\.\]$'
 targets/foobar \[running\.\.\.\]
 foobar!
 targets/foobar \[done\]
-targets/reached_if_true_with_deps \[done\]$'
+targets/reached_if_true_with_deps \[already satisfied\]$'
 }
 
 @test 'reached_if - encounters error - returns early' {

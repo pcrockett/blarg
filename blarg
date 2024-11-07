@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 
 STDLIB = """
@@ -73,9 +73,11 @@ if [ ${reached_if_result} -ne 0 ]; then
         set -Eeuo pipefail
         apply
     ) || exit $?
+    log_verbose "${BLARG_TARGET_NAME} [done]"
+else
+    log_verbose "${BLARG_TARGET_NAME} [already satisfied]"
 fi
 
-log_verbose "${BLARG_TARGET_NAME} [done]"
 """
 
 
