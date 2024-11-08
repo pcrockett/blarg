@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.0.5"
+VERSION = "0.1.0"
 
 
 STDLIB = """
@@ -36,10 +36,12 @@ depends_on() {
 }
 
 apply_target() {
-    local this_dir
+    local this_dir full_target_path
     this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
     for script_basename in "$@"; do
-        "${this_dir}/${script_basename}.bash" || return $?
+        full_target_path="${this_dir}/${script_basename}.bash"
+        test -f "${full_target_path}" || panic "Target does not exist: ${full_target_path}"
+        "${full_target_path}" || return $?
     done
 }
 """

@@ -206,6 +206,14 @@ hi
     assert_stderr '^FATAL: OMG panic!$'
 }
 
+@test 'apply_target - target doesnt exist - fails' {
+    use_target apply_target_does_not_exist
+    capture_output ./targets/apply_target_does_not_exist.bash
+    assert_exit_code 1
+    assert_stderr '^FATAL: Target does not exist: /.+/targets/this_target_does_not_exist_kdhgaqeikfkgggg\.bash'
+    assert_no_stdout
+}
+
 @test 'dump-src - always - begins with shebang' {
     use_target foobar
     capture_output blarg --dump-src targets/foobar.bash
