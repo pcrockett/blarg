@@ -1,4 +1,4 @@
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.13
 FROM docker.io/library/python:${PYTHON_VERSION}-slim-bookworm
 SHELL [ "/bin/bash", "-Eeuo", "pipefail", "-c" ]
 ARG DEBIAN_FRONTEND=noninteractive
@@ -23,7 +23,7 @@ ENV PATH="${ASDF_DIR}/bin:${ASDF_DIR}/shims:${PATH}"
 
 RUN \
 curl -SsfL https://philcrockett.com/yolo/v1.sh | bash -s -- docker/asdf && \
-. "${HOME}/.asdf/asdf.sh" && \
+. "${ASDF_DIR}/asdf.sh" && \
 asdf plugin add bats https://github.com/pcrockett/asdf-bats.git
 
 COPY --chown=user:user .tool-versions .
