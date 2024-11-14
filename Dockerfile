@@ -9,7 +9,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
 rm -f /etc/apt/apt.conf.d/docker-clean && \
 apt-get update && \
-apt-get install --yes --no-install-recommends curl ca-certificates git make && \
+apt-get install --yes --no-install-recommends curl ca-certificates git make xz-utils && \
 useradd --create-home user && \
 mkdir /app && \
 chown -R user:user /app
@@ -24,7 +24,8 @@ ENV PATH="${ASDF_DIR}/bin:${ASDF_DIR}/shims:${PATH}"
 RUN \
 curl -SsfL https://philcrockett.com/yolo/v1.sh | bash -s -- docker/asdf && \
 . "${ASDF_DIR}/asdf.sh" && \
-asdf plugin add bats https://github.com/pcrockett/asdf-bats.git
+asdf plugin add bats https://github.com/pcrockett/asdf-bats.git && \
+asdf plugin add shellcheck https://github.com/luizm/asdf-shellcheck.git
 
 COPY --chown=user:user .tool-versions .
 
