@@ -222,6 +222,12 @@ hi
     assert_stdout '^#!/usr/bin/env bash'
 }
 
+@test 'dump-src - always - passes shellcheck' {
+    use_target complete
+    blarg --dump-src targets/complete.bash > dump.sh
+    shellcheck dump.sh
+}
+
 @test 'reached_if - returns true - still applies dependencies' {
     use_target reached_if_true_with_deps foobar
     capture_output blarg --verbose ./targets/reached_if_true_with_deps.bash
