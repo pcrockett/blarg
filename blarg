@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 
 STDLIB = """
@@ -50,10 +50,18 @@ apply_target() {
 BASE = """
 
 reached_if() {
+    # this command will normally be unreachable; the user's `reached_if` implementation will
+    # very often override this one.
+    #
+    # shellcheck disable=SC2317
     false
 }
 
 apply() {
+    # this command will normally be unreachable; the user's `apply` implementation will
+    # very often override this one.
+    #
+    # shellcheck disable=SC2317
     true
 }
 

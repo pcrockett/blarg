@@ -222,6 +222,21 @@ hi
     assert_stdout '^#!/usr/bin/env bash'
 }
 
+@test 'dump-src - always - passes shellcheck' {
+    local targets=(
+        complete
+        basic
+        simple_apply
+        empty
+        nested_deps
+    )
+    use_target "${targets[@]}"
+    for t in "${targets[@]}"; do
+        blarg --dump-src "targets/${t}.bash" > "${t}_dump.sh"
+    done
+    shellcheck ./*_dump.sh
+}
+
 @test 'reached_if - returns true - still applies dependencies' {
     use_target reached_if_true_with_deps foobar
     capture_output blarg --verbose ./targets/reached_if_true_with_deps.bash
