@@ -223,9 +223,18 @@ hi
 }
 
 @test 'dump-src - always - passes shellcheck' {
-    use_target complete
-    blarg --dump-src targets/complete.bash > dump.sh
-    shellcheck dump.sh
+    local targets=(
+        complete
+        basic
+        simple_apply
+        empty
+        nested_deps
+    )
+    use_target "${targets[@]}"
+    for t in "${targets[@]}"; do
+        blarg --dump-src "targets/${t}.bash" > "${t}_dump.sh"
+    done
+    shellcheck ./*_dump.sh
 }
 
 @test 'reached_if - returns true - still applies dependencies' {
