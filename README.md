@@ -35,7 +35,7 @@ reached_if() {
 }
 
 apply() {
-  apply_target apt_updated
+  satisfy apt_updated
   sudo apt-get install --yes cowsay
 }
 ```
