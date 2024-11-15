@@ -1,5 +1,5 @@
 #!/usr/bin/env blarg
 
 apply() {
-    satisfy reached_if_true reached_if_false panic
+    satisfy satisfied_if_true satisfied_if_false panic
 }

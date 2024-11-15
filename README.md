@@ -30,7 +30,7 @@ In `cowsay_installed.bash`:
 ```bash
 #!/usr/bin/env blarg
 
-reached_if() {
+satisfied_if() {
   command -v cowsay
 }
 

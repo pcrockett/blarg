@@ -4,7 +4,7 @@ TEMP_FILE="$(mktemp)"
 
 func_a
 
-reached_if() {
+satisfied_if() {
     func_b > "${TEMP_FILE}"
 }
 

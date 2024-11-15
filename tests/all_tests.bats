@@ -37,23 +37,23 @@ source tests/util.sh
     assert_no_stdout
 }
 
-@test 'reached_if - returns false - executes apply' {
-    use_target reached_if_false
-    capture_output ./targets/reached_if_false.bash
+@test 'satisfied_if - returns false - executes apply' {
+    use_target satisfied_if_false
+    capture_output ./targets/satisfied_if_false.bash
     assert_no_stderr
     assert_exit_code 0
     assert_stdout '^hi$'
 }
 
-@test 'reached_if - returns true - does not execute apply' {
-    use_target reached_if_true
-    capture_output ./targets/reached_if_true.bash
+@test 'satisfied_if - returns true - does not execute apply' {
+    use_target satisfied_if_true
+    capture_output ./targets/satisfied_if_true.bash
     assert_no_stderr
     assert_exit_code 0
     assert_no_stdout
 }
 
-@test 'depends_on - no apply or reached_if - executes dependencies' {
+@test 'depends_on - no apply or satisfied_if - executes dependencies' {
     use_target depends_on_only dependency_a dependency_b
     capture_output ./targets/depends_on_only.bash
     assert_no_stderr
@@ -140,12 +140,12 @@ targets/basic \[done\]$'
 }
 
 @test 'verbose - targets already reached - not silent' {
-    use_target reached_if_true
-    capture_output blarg --verbose targets/reached_if_true.bash
+    use_target satisfied_if_true
+    capture_output blarg --verbose targets/satisfied_if_true.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/reached_if_true \[running\.\.\.\]
-targets/reached_if_true \[already satisfied\]$'
+    assert_stdout '^targets/satisfied_if_true \[running\.\.\.\]
+targets/satisfied_if_true \[already satisfied\]$'
 }
 
 @test 'environment - always - populated' {
@@ -192,16 +192,16 @@ targets/depends_on_only \[done\]$'
 }
 
 @test 'satisfy - always - applies other targets' {
-    use_target satisfy reached_if_true reached_if_false panic
+    use_target satisfy satisfied_if_true satisfied_if_false panic
     export BLARG_VERBOSE=1
     capture_output ./targets/satisfy.bash
     assert_exit_code 1
     assert_stdout '^targets/satisfy \[running\.\.\.\]
- targets/reached_if_true \[running\.\.\.\]
- targets/reached_if_true \[already satisfied\]
- targets/reached_if_false \[running\.\.\.\]
+ targets/satisfied_if_true \[running\.\.\.\]
+ targets/satisfied_if_true \[already satisfied\]
+ targets/satisfied_if_false \[running\.\.\.\]
 hi
- targets/reached_if_false \[done\]
+ targets/satisfied_if_false \[done\]
  targets/panic \[running\.\.\.\]$'
     assert_stderr '^FATAL: OMG panic!$'
 }
@@ -237,21 +237,21 @@ hi
     shellcheck ./*_dump.sh
 }
 
-@test 'reached_if - returns true - still applies dependencies' {
-    use_target reached_if_true_with_deps foobar
-    capture_output blarg --verbose ./targets/reached_if_true_with_deps.bash
+@test 'satisfied_if - returns true - still applies dependencies' {
+    use_target satisfied_if_true_with_deps foobar
+    capture_output blarg --verbose ./targets/satisfied_if_true_with_deps.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/reached_if_true_with_deps \[running\.\.\.\]
+    assert_stdout '^targets/satisfied_if_true_with_deps \[running\.\.\.\]
  targets/foobar \[running\.\.\.\]
 foobar!
  targets/foobar \[done\]
-targets/reached_if_true_with_deps \[already satisfied\]$'
+targets/satisfied_if_true_with_deps \[already satisfied\]$'
 }
 
-@test 'reached_if - encounters error - returns early' {
-    use_target reached_if_true_with_error
-    capture_output blarg ./targets/reached_if_true_with_error.bash
+@test 'satisfied_if - encounters error - returns early' {
+    use_target satisfied_if_true_with_error
+    capture_output blarg ./targets/satisfied_if_true_with_error.bash
     assert_no_stderr
     assert_stdout '^You should see this\.$'
     assert_exit_code 0

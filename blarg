@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 
 STDLIB = """
@@ -49,8 +49,8 @@ satisfy() {
 
 BASE = """
 
-reached_if() {
-    # this command will normally be unreachable; the user's `reached_if` implementation will
+satisfied_if() {
+    # this command will normally be unreachable; the user's `satisfied_if` implementation will
     # very often override this one.
     #
     # shellcheck disable=SC2317
@@ -74,11 +74,11 @@ satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
 
 (
     set -Eeuo pipefail
-    reached_if &> /dev/null
+    satisfied_if &> /dev/null
 )
-reached_if_result=$?
+satisfied_if_result=$?
 
-if [ ${reached_if_result} -ne 0 ]; then
+if [ ${satisfied_if_result} -ne 0 ]; then
     (
         set -Eeuo pipefail
         apply
