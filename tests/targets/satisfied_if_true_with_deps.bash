@@ -2,6 +2,6 @@
 
 depends_on foobar
 
-reached_if() {
+satisfied_if() {
     true
 }

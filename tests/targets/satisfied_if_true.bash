@@ -1,6 +1,6 @@
 #!/usr/bin/env blarg
 
-reached_if() {
+satisfied_if() {
     echo "you should not see this"
     true
 }
