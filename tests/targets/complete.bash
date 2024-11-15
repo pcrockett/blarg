@@ -9,6 +9,6 @@ reached_if() {
 
 apply() {
     log_verbose "applying..."
-    apply_target basic
+    satisfy basic
     this_command_doesnt_exist_934hfnn || panic "Oops!"
 }

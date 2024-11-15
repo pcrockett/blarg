@@ -191,12 +191,12 @@ B!
 targets/depends_on_only \[done\]$'
 }
 
-@test 'apply_target - always - applies other targets' {
-    use_target dynamic_apply reached_if_true reached_if_false panic
+@test 'satisfy - always - applies other targets' {
+    use_target satisfy reached_if_true reached_if_false panic
     export BLARG_VERBOSE=1
-    capture_output ./targets/dynamic_apply.bash
+    capture_output ./targets/satisfy.bash
     assert_exit_code 1
-    assert_stdout '^targets/dynamic_apply \[running\.\.\.\]
+    assert_stdout '^targets/satisfy \[running\.\.\.\]
  targets/reached_if_true \[running\.\.\.\]
  targets/reached_if_true \[already satisfied\]
  targets/reached_if_false \[running\.\.\.\]
@@ -206,9 +206,9 @@ hi
     assert_stderr '^FATAL: OMG panic!$'
 }
 
-@test 'apply_target - target doesnt exist - fails' {
-    use_target apply_target_does_not_exist
-    capture_output ./targets/apply_target_does_not_exist.bash
+@test 'satisfy - target doesnt exist - fails' {
+    use_target satisfy_does_not_exist
+    capture_output ./targets/satisfy_does_not_exist.bash
     assert_exit_code 1
     assert_stderr '^FATAL: Target does not exist: /.+/targets/this_target_does_not_exist_kdhgaqeikfkgggg\.bash'
     assert_no_stdout
