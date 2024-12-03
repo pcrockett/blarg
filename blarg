@@ -40,7 +40,8 @@ satisfy() {
     this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
     for script_basename in "$@"; do
         full_target_path="${this_dir}/${script_basename}.bash"
-        test -f "${full_target_path}" || panic "Target does not exist: ${full_target_path}"
+        test -f "${full_target_path}" \
+            || panic "Target does not exist: ${full_target_path}"
         "${full_target_path}" || return $?
     done
 }
@@ -50,8 +51,8 @@ satisfy() {
 BASE = """
 
 satisfied_if() {
-    # this command will normally be unreachable; the user's `satisfied_if` implementation will
-    # very often override this one.
+    # this command will normally be unreachable; the user's `satisfied_if`
+    # implementation will very often override this one.
     #
     # shellcheck disable=SC2317
     false
@@ -108,7 +109,10 @@ class CliParser(argparse.ArgumentParser):
         self.add_argument(
             "--dump-src",
             "-d",
-            help="Don't run the script; just dump the full source that would be executed by Bash",
+            help=(
+                "Output the full source that would be executed"
+                "by Bash instead of running"
+            ),
             action="store_true",
         )
         self.add_argument(
