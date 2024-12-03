@@ -272,3 +272,12 @@ hi
 targets/nested_deps \[done\]$'
     assert_exit_code 0
 }
+
+@test 'depends_on and satisfy - relative dependency - calculates path correctly' {
+    use_target some-usecase foobar simple_apply
+    capture_output blarg ./targets/some-usecase/relative_dependency.bash
+    assert_no_stderr
+    assert_stdout '^foobar!
+hi$'
+    assert_exit_code 0
+}
