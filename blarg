@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.2.1"
+VERSION = "0.3.0"
 
 
 STDLIB = """
@@ -36,12 +36,21 @@ depends_on() {
 }
 
 satisfy() {
-    local this_dir full_target_path
+    local this_dir full_target_path search_dirs script_basename dir
     this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
+    search_dirs=(
+        "${this_dir}"
+        "${BLARG_TARGETS_DIR}"
+    )
     for script_basename in "$@"; do
-        full_target_path="${this_dir}/${script_basename}.bash"
+        for dir in "${search_dirs[@]}"; do
+            full_target_path="${dir}/${script_basename}.bash"
+            if [ -f "${full_target_path}" ]; then
+                break
+            fi
+        done
         test -f "${full_target_path}" \
-            || panic "Target does not exist: ${full_target_path}"
+            || panic "Target does not exist: ${script_basename}"
         "${full_target_path}" || return $?
     done
 }
@@ -182,6 +191,9 @@ def main() -> int:
 
     if not env.get("BLARG_CWD"):
         env["BLARG_CWD"] = os.getcwd()
+
+    if not env.get("BLARG_TARGETS_DIR"):
+        env["BLARG_TARGETS_DIR"] = str(Path.cwd() / "targets")
 
     indent = env.get("BLARG_INDENT")
     if indent is None:

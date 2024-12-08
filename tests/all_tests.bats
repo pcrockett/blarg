@@ -158,6 +158,7 @@ targets/satisfied_if_true \[already satisfied\]$'
 BLARG_INDENT=
 BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
 BLARG_RUN_DIR=/tmp/[[:print:]]+
+BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets
 BLARG_TARGET_NAME=targets/print_env
 BLARG_TARGET_PATH=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash$
 EOF
@@ -210,7 +211,7 @@ hi
     use_target satisfy_does_not_exist
     capture_output ./targets/satisfy_does_not_exist.bash
     assert_exit_code 1
-    assert_stderr '^FATAL: Target does not exist: /.+/targets/this_target_does_not_exist_kdhgaqeikfkgggg\.bash'
+    assert_stderr '^FATAL: Target does not exist: this_target_does_not_exist_kdhgaqeikfkgggg'
     assert_no_stdout
 }
 
