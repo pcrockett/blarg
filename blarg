@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 
 STDLIB = """
@@ -51,7 +51,7 @@ satisfy() {
         done
         test -f "${full_target_path}" \
             || panic "Target does not exist: ${script_basename}"
-        "${full_target_path}" || return $?
+        "${full_target_path}" || exit $?
     done
 }
 """
