@@ -215,6 +215,14 @@ hi
     assert_no_stdout
 }
 
+@test 'satisfy - target fails - fails' {
+    use_target panic satisfy_fails
+    capture_output ./targets/satisfy_fails.bash
+    assert_exit_code 1
+    assert_stderr '^FATAL: OMG panic!$'
+    assert_no_stdout
+}
+
 @test 'dump-src - always - begins with shebang' {
     use_target foobar
     capture_output blarg --dump-src targets/foobar.bash
