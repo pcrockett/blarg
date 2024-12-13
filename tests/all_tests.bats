@@ -108,9 +108,9 @@ B$'
     capture_output blarg --verbose ./targets/verbose.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/verbose \[running\.\.\.\]
+    assert_stdout '^--> targets/verbose \[running\.\.\.\]
 BLARG_VERBOSE: True
-targets/verbose \[done\]$'
+--> targets/verbose \[done\]$'
 }
 
 @test 'verbose - always - inherited from parent target' {
@@ -118,12 +118,13 @@ targets/verbose \[done\]$'
     capture_output blarg --verbose ./targets/verbose_parent.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/verbose_parent \[running\.\.\.\]
- targets/verbose \[running\.\.\.\]
+    assert_stdout '^--> targets/verbose_parent \[dependencies\.\.\.\]
+ --> targets/verbose \[running\.\.\.\]
 BLARG_VERBOSE: True
- targets/verbose \[done\]
+ --> targets/verbose \[done\]
+--> targets/verbose_parent \[running\.\.\.\]
 BLARG_VERBOSE: True
-targets/verbose_parent \[done\]$'
+--> targets/verbose_parent \[done\]$'
 }
 
 @test 'verbose - targets not reached - shows running' {
@@ -131,12 +132,13 @@ targets/verbose_parent \[done\]$'
     capture_output blarg --verbose targets/basic.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/basic \[running\.\.\.\]
- targets/foobar \[running\.\.\.\]
+    assert_stdout '^--> targets/basic \[dependencies\.\.\.\]
+ --> targets/foobar \[running\.\.\.\]
 foobar!
- targets/foobar \[done\]
+ --> targets/foobar \[done\]
+--> targets/basic \[running\.\.\.\]
 hello, there\.\.\.
-targets/basic \[done\]$'
+--> targets/basic \[done\]$'
 }
 
 @test 'verbose - targets already reached - not silent' {
@@ -144,8 +146,8 @@ targets/basic \[done\]$'
     capture_output blarg --verbose targets/satisfied_if_true.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/satisfied_if_true \[running\.\.\.\]
-targets/satisfied_if_true \[already satisfied\]$'
+    assert_stdout '^--> targets/satisfied_if_true \[running\.\.\.\]
+--> targets/satisfied_if_true \[already satisfied\]$'
 }
 
 @test 'environment - always - populated' {
@@ -155,7 +157,7 @@ targets/satisfied_if_true \[already satisfied\]$'
     assert_exit_code 0
     stdout_regex="$(cat <<EOF
 ^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
-BLARG_INDENT=
+BLARG_INDENT=--> 
 BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
 BLARG_RUN_DIR=/tmp/[[:print:]]+
 BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets
@@ -182,14 +184,15 @@ targets/some-usecase/main$'
     capture_output ./targets/depends_on_only.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/depends_on_only \[running\.\.\.\]
- targets/dependency_a \[running\.\.\.\]
+    assert_stdout '^--> targets/depends_on_only \[dependencies\.\.\.\]
+ --> targets/dependency_a \[running\.\.\.\]
 A!
- targets/dependency_a \[done\]
- targets/dependency_b \[running\.\.\.\]
+ --> targets/dependency_a \[done\]
+ --> targets/dependency_b \[running\.\.\.\]
 B!
- targets/dependency_b \[done\]
-targets/depends_on_only \[done\]$'
+ --> targets/dependency_b \[done\]
+--> targets/depends_on_only \[running\.\.\.\]
+--> targets/depends_on_only \[done\]$'
 }
 
 @test 'satisfy - always - applies other targets' {
@@ -197,13 +200,13 @@ targets/depends_on_only \[done\]$'
     export BLARG_VERBOSE=1
     capture_output ./targets/satisfy.bash
     assert_exit_code 1
-    assert_stdout '^targets/satisfy \[running\.\.\.\]
- targets/satisfied_if_true \[running\.\.\.\]
- targets/satisfied_if_true \[already satisfied\]
- targets/satisfied_if_false \[running\.\.\.\]
+    assert_stdout '^--> targets/satisfy \[running\.\.\.\]
+ --> targets/satisfied_if_true \[running\.\.\.\]
+ --> targets/satisfied_if_true \[already satisfied\]
+ --> targets/satisfied_if_false \[running\.\.\.\]
 hi
- targets/satisfied_if_false \[done\]
- targets/panic \[running\.\.\.\]$'
+ --> targets/satisfied_if_false \[done\]
+ --> targets/panic \[running\.\.\.\]$'
     assert_stderr '^FATAL: OMG panic!$'
 }
 
@@ -251,11 +254,12 @@ hi
     capture_output blarg --verbose ./targets/satisfied_if_true_with_deps.bash
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^targets/satisfied_if_true_with_deps \[running\.\.\.\]
- targets/foobar \[running\.\.\.\]
+    assert_stdout '^--> targets/satisfied_if_true_with_deps \[dependencies\.\.\.\]
+ --> targets/foobar \[running\.\.\.\]
 foobar!
- targets/foobar \[done\]
-targets/satisfied_if_true_with_deps \[already satisfied\]$'
+ --> targets/foobar \[done\]
+--> targets/satisfied_if_true_with_deps \[running\.\.\.\]
+--> targets/satisfied_if_true_with_deps \[already satisfied\]$'
 }
 
 @test 'satisfied_if - encounters error - returns early' {
@@ -270,15 +274,18 @@ targets/satisfied_if_true_with_deps \[already satisfied\]$'
     use_target nested_deps nested_dep_1 nested_dep_2 nested_dep_3
     capture_output blarg --verbose ./targets/nested_deps.bash
     assert_no_stderr
-    assert_stdout '^targets/nested_deps \[running\.\.\.\]
- targets/nested_dep_1 \[running\.\.\.\]
-  targets/nested_dep_2 \[running\.\.\.\]
-   targets/nested_dep_3 \[running\.\.\.\]
+    assert_stdout '^--> targets/nested_deps \[dependencies\.\.\.\]
+ --> targets/nested_dep_1 \[dependencies\.\.\.\]
+  --> targets/nested_dep_2 \[dependencies\.\.\.\]
+   --> targets/nested_dep_3 \[running\.\.\.\]
 hi
-   targets/nested_dep_3 \[done\]
-  targets/nested_dep_2 \[done\]
- targets/nested_dep_1 \[done\]
-targets/nested_deps \[done\]$'
+   --> targets/nested_dep_3 \[done\]
+  --> targets/nested_dep_2 \[running\.\.\.\]
+  --> targets/nested_dep_2 \[done\]
+ --> targets/nested_dep_1 \[running\.\.\.\]
+ --> targets/nested_dep_1 \[done\]
+--> targets/nested_deps \[running\.\.\.\]
+--> targets/nested_deps \[done\]$'
     assert_exit_code 0
 }
 

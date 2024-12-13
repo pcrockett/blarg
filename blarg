@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 
 
 STDLIB = """
@@ -79,9 +79,12 @@ apply() {
 
 
 EXECUTOR = """
-log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
-satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
+if [ ${#BLARG_TARGET_DEPENDENCIES[@]} -gt 0 ]; then
+    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [dependencies...]"
+    satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
+fi
 
+log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
 (
     set -Eeuo pipefail
     satisfied_if &> /dev/null
@@ -197,7 +200,7 @@ def main() -> int:
 
     indent = env.get("BLARG_INDENT")
     if indent is None:
-        indent = ""
+        indent = "--> "
     else:
         indent = f" {indent}"
     env["BLARG_INDENT"] = indent
