@@ -228,7 +228,8 @@ def main() -> int:
     running_targets.append(str(resolved_path))
     env["BLARG_RUNNING_TARGETS"] = json.dumps(running_targets)
 
-    if temp_dir_path := env.get("BLARG_RUN_DIR"):
+    temp_dir_path = env.get("BLARG_RUN_DIR")
+    if temp_dir_path:
         temp_dir = None  # a different blarg process is managing this directory
     else:
         temp_dir = TemporaryDirectory()
