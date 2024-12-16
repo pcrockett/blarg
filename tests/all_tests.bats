@@ -308,3 +308,18 @@ foobar!
 --> foobar \[done\]$'
     assert_exit_code 0
 }
+
+@test 'targets_dir - target outside of dir - prints full path' {
+    use_target basic foobar
+    mv targets/basic.bash .
+    capture_output blarg --verbose ./basic.bash
+    assert_no_stderr
+    assert_stdout '^--> /tmp/blarg-test\.[[:alnum:]]+/basic \[dependencies\.\.\.\]
+ --> foobar \[running\.\.\.\]
+foobar!
+ --> foobar \[done\]
+--> /tmp/blarg-test\.[[:alnum:]]+/basic \[running\.\.\.\]
+hello, there\.\.\.
+--> /tmp/blarg-test\.[[:alnum:]]+/basic \[done\]'
+    assert_exit_code 0
+}
