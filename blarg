@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.3.2"
+VERSION = "0.3.3"
 
 
 STDLIB = """
@@ -195,8 +195,12 @@ def main() -> int:
     if not env.get("BLARG_CWD"):
         env["BLARG_CWD"] = os.getcwd()
 
-    if not env.get("BLARG_TARGETS_DIR"):
-        env["BLARG_TARGETS_DIR"] = str(Path.cwd() / "targets")
+    targets_dir = env.get("BLARG_TARGETS_DIR")
+    if targets_dir:
+        targets_dir = Path(targets_dir).resolve()
+    else:
+        targets_dir = str(Path.cwd() / "targets")
+        env["BLARG_TARGETS_DIR"] = targets_dir
 
     indent = env.get("BLARG_INDENT")
     if indent is None:
@@ -206,7 +210,7 @@ def main() -> int:
     env["BLARG_INDENT"] = indent
 
     target_name = str(resolved_path.with_suffix(""))
-    _, _, target_name = target_name.partition(f"{os.getcwd()}/")
+    _, _, target_name = target_name.partition(f"{targets_dir}/")
     env["BLARG_TARGET_NAME"] = target_name
 
     running_targets_unparsed = env.get("BLARG_RUNNING_TARGETS")
