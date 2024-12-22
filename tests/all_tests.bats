@@ -157,7 +157,7 @@ hello, there\.\.\.
     assert_exit_code 0
     stdout_regex="$(cat <<EOF
 ^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
-BLARG_INDENT=--> 
+BLARG_INDENT=-->[[:space:]]
 BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
 BLARG_RUN_DIR=/tmp/[[:print:]]+
 BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets
