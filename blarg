@@ -12,13 +12,14 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.3.4"
+VERSION = "0.4.0-rc1"
 
 
 STDLIB = """
 #!/usr/bin/env bash
 
 BLARG_TARGET_DEPENDENCIES=()
+BLARG_LAZY_DEPENDENCIES=()
 
 panic() {
     echo "FATAL: ${*}" >&2
@@ -33,6 +34,14 @@ log_verbose() {
 
 depends_on() {
     BLARG_TARGET_DEPENDENCIES+=("$@")
+}
+
+before_apply() {
+    BLARG_LAZY_DEPENDENCIES+=("$@")
+}
+
+is_satisfied() {
+    BLARG_TEST_ONLY=true satisfy "$@" &> /dev/null
 }
 
 satisfy() {
@@ -79,9 +88,19 @@ apply() {
 
 
 EXECUTOR = """
-if [ ${#BLARG_TARGET_DEPENDENCIES[@]} -gt 0 ]; then
+if [ ${#BLARG_TARGET_DEPENDENCIES[@]} -gt 0 ] || [ ${#BLARG_LAZY_DEPENDENCIES[@]} -gt 0 ]; then
     log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [dependencies...]"
+fi
+
+if [ ${#BLARG_TARGET_DEPENDENCIES[@]} -gt 0 ]; then
     satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
+fi
+
+needs_lazy=false
+if [ ${#BLARG_LAZY_DEPENDENCIES[@]} -gt 0 ]; then
+    if ! is_satisfied "${BLARG_LAZY_DEPENDENCIES[@]}"; then
+        needs_lazy=true
+    fi
 fi
 
 log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
@@ -91,7 +110,19 @@ log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
 )
 satisfied_if_result=$?
 
-if [ ${satisfied_if_result} -ne 0 ]; then
+if [ "${BLARG_TEST_ONLY:-}" != "" ]; then
+    if [ ${satisfied_if_result} -eq 0 ] && [ "${needs_lazy}" == "false" ]; then
+        log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
+        exit_code=0
+    else
+        log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [not satisfied]"
+        exit_code=1
+    fi
+    exit ${exit_code}
+elif [ ${satisfied_if_result} -ne 0 ]; then
+    if [ "${needs_lazy}" == "true" ]; then
+        satisfy "${BLARG_LAZY_DEPENDENCIES[@]}"
+    fi
     (
         set -Eeuo pipefail
         apply
