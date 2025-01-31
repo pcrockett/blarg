@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.3.4"
+VERSION = "0.4.0"
 
 
 STDLIB = """
@@ -92,10 +92,14 @@ log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
 satisfied_if_result=$?
 
 if [ ${satisfied_if_result} -ne 0 ]; then
-    (
-        set -Eeuo pipefail
-        apply
-    ) || exit $?
+    if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+        echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+    else
+        (
+            set -Eeuo pipefail
+            apply
+        ) || exit $?
+    fi
     log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
 else
     log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
@@ -110,6 +114,7 @@ class CliArgs:
     dump_src: bool
     version: bool
     verbose: bool
+    dry_run: bool
 
 
 class CliParser(argparse.ArgumentParser):
@@ -133,6 +138,9 @@ class CliParser(argparse.ArgumentParser):
         self.add_argument(
             "--verbose", "-v", help="Display verbose output", action="store_true"
         )
+        self.add_argument(
+            "--dry-run", "-r", help="Don't apply targets", action="store_true"
+        )
 
 
 def parse_args() -> CliArgs:
@@ -142,6 +150,7 @@ def parse_args() -> CliArgs:
         args.dump_src,
         args.version,
         args.verbose,
+        args.dry_run,
     )
 
 
@@ -201,6 +210,10 @@ def main() -> int:
     else:
         targets_dir = str(Path.cwd() / "targets")
         env["BLARG_TARGETS_DIR"] = targets_dir
+
+    dry_run = args.dry_run or "BLARG_DRY_RUN" in env
+    if dry_run:
+        env["BLARG_DRY_RUN"] = str(dry_run)
 
     indent = env.get("BLARG_INDENT")
     if indent is None:

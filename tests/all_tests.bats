@@ -323,3 +323,13 @@ hello, there\.\.\.
 --> /tmp/blarg-test\.[[:alnum:]]+/basic \[done\]'
     assert_exit_code 0
 }
+
+@test 'dry_run - never - executes apply' {
+    use_target should_run_once run_once_a run_once_b
+    capture_output blarg --dry-run ./targets/run_once_b.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_stdout '^dry-run: would apply should_run_once
+dry-run: would apply run_once_a
+dry-run: would apply run_once_b$'
+}
