@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 
 
 STDLIB = """
@@ -49,7 +49,7 @@ satisfy() {
                 break
             fi
         done
-        test -f "${full_target_path}" \
+        test -f "${full_target_path}" \\
             || panic "Target does not exist: ${script_basename}"
         "${full_target_path}" || exit $?
     done
@@ -58,7 +58,6 @@ satisfy() {
 
 
 BASE = """
-
 satisfied_if() {
     # this command will normally be unreachable; the user's `satisfied_if`
     # implementation will very often override this one.
@@ -79,32 +78,35 @@ apply() {
 
 
 EXECUTOR = """
-if [ ${#BLARG_TARGET_DEPENDENCIES[@]} -gt 0 ]; then
-    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [dependencies...]"
-    satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
-fi
-
-log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
-(
-    set -Eeuo pipefail
-    satisfied_if &> /dev/null
-)
-satisfied_if_result=$?
-
-if [ ${satisfied_if_result} -ne 0 ]; then
-    if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
-        echo "dry-run: would apply ${BLARG_TARGET_NAME}"
-    else
-        (
-            set -Eeuo pipefail
-            apply
-        ) || exit $?
+__BLARG_MAIN__() {
+    if [ ${#BLARG_TARGET_DEPENDENCIES[@]} -gt 0 ]; then
+        log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [dependencies...]"
+        satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
     fi
-    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
-else
-    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
-fi
 
+    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
+    (
+        set -Eeuo pipefail
+        satisfied_if &> /dev/null
+    )
+    satisfied_if_result=$?
+
+    if [ ${satisfied_if_result} -ne 0 ]; then
+        if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+            echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+        else
+            (
+                set -Eeuo pipefail
+                apply
+            ) || exit $?
+        fi
+        log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
+    else
+        log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
+    fi
+}
+
+__BLARG_MAIN__
 """
 
 
