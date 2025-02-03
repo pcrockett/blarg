@@ -324,12 +324,20 @@ hello, there\.\.\.
     assert_exit_code 0
 }
 
-@test 'dry_run - never - executes apply' {
+@test 'dry_run - targets need apply - avoids executing apply' {
     use_target should_run_once run_once_a run_once_b
     capture_output blarg --dry-run ./targets/run_once_b.bash
     assert_no_stderr
-    assert_exit_code 0
+    assert_exit_code 1
     assert_stdout '^dry-run: would apply should_run_once
 dry-run: would apply run_once_a
 dry-run: would apply run_once_b$'
+}
+
+@test 'dry_run - targets satisfied - exit code 0' {
+    use_target satisfied_if_true
+    capture_output blarg --dry-run ./targets/satisfied_if_true.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_no_stdout
 }

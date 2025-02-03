@@ -49,7 +49,7 @@ satisfy() {
                 break
             fi
         done
-        test -f "${full_target_path}" \
+        test -f "${full_target_path}" \\
             || panic "Target does not exist: ${script_basename}"
         "${full_target_path}" || exit $?
     done
@@ -91,9 +91,11 @@ log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
 )
 satisfied_if_result=$?
 
+exit_code=0
 if [ ${satisfied_if_result} -ne 0 ]; then
     if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
         echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+        exit_code=1
     else
         (
             set -Eeuo pipefail
@@ -105,6 +107,7 @@ else
     log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
 fi
 
+exit ${exit_code}
 """
 
 
