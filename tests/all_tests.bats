@@ -65,7 +65,8 @@ B!$'
 @test 'panic - always - crashes script' {
     use_target panic
     capture_output ./targets/panic.bash
-    assert_stderr '^FATAL: OMG panic!$'
+    assert_stderr '^FATAL: OMG panic!
+FATAL: panic\.apply\(\) returned with code 1\.$'
     assert_exit_code 1
     assert_no_stdout
 }
@@ -207,7 +208,9 @@ B!
 hi
  --> satisfied_if_false \[done\]
  --> panic \[running\.\.\.\]$'
-    assert_stderr '^FATAL: OMG panic!$'
+    assert_stderr '^FATAL: OMG panic!
+FATAL: panic\.apply\(\) returned with code 1\.
+FATAL: satisfy\.apply\(\) returned with code 1\.$'
 }
 
 @test 'satisfy - target doesnt exist - fails' {
@@ -221,9 +224,11 @@ hi
 @test 'satisfy - target fails - fails' {
     use_target panic satisfy_fails
     capture_output ./targets/satisfy_fails.bash
-    assert_exit_code 1
-    assert_stderr '^FATAL: OMG panic!$'
     assert_no_stdout
+    assert_exit_code 1
+    assert_stderr '^FATAL: OMG panic!
+FATAL: panic\.apply\(\) returned with code 1\.
+FATAL: satisfy_fails\.apply\(\) returned with code 1\.$'
 }
 
 @test 'dump-src - always - begins with shebang' {
@@ -332,4 +337,12 @@ hello, there\.\.\.
     assert_stdout '^dry-run: would apply should_run_once
 dry-run: would apply run_once_a
 dry-run: would apply run_once_b$'
+}
+
+@test 'apply - non-zero command exit - exits immediately' {
+    use_target apply_non_zero_exit
+    capture_output blarg ./targets/apply_non_zero_exit.bash
+    assert_no_stdout
+    assert_stderr '^FATAL: apply_non_zero_exit\.apply\(\) returned with code 1\.$'
+    assert_exit_code 1
 }

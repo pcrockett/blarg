@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 
 
 STDLIB = """
@@ -32,6 +32,10 @@ log_verbose() {
 }
 
 depends_on() {
+    # this command may not be used in the user's target script, so we could get
+    # a shellcheck "command unreachable" error here _sometimes_.
+    #
+    # shellcheck disable=SC2317
     BLARG_TARGET_DEPENDENCIES+=("$@")
 }
 
@@ -51,7 +55,7 @@ satisfy() {
         done
         test -f "${full_target_path}" \\
             || panic "Target does not exist: ${script_basename}"
-        "${full_target_path}" || exit $?
+        "${full_target_path}" || return $?
     done
 }
 """
@@ -81,7 +85,7 @@ EXECUTOR = """
 __BLARG_MAIN__() {
     if [ ${#BLARG_TARGET_DEPENDENCIES[@]} -gt 0 ]; then
         log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [dependencies...]"
-        satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || exit $?
+        satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || return $?
     fi
 
     log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
@@ -98,7 +102,9 @@ __BLARG_MAIN__() {
             (
                 set -Eeuo pipefail
                 apply
-            ) || exit $?
+            )
+            apply_result=$?
+            test ${apply_result} -eq 0 || panic "${BLARG_TARGET_NAME}.apply() returned with code ${apply_result}."
         fi
         log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
     else
