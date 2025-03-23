@@ -104,7 +104,7 @@ __BLARG_MAIN__() {
                 apply
             )
             apply_result=$?
-            test ${apply_result} -eq 0 || return ${apply_result}
+            test ${apply_result} -eq 0 || panic "${BLARG_TARGET_NAME}.apply() returned with code ${apply_result}."
         fi
         log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
     else
