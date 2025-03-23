@@ -32,6 +32,10 @@ log_verbose() {
 }
 
 depends_on() {
+    # this command may not be used in the user's target script, so we could get
+    # a shellcheck "command unreachable" error here _sometimes_.
+    #
+    # shellcheck disable=SC2317
     BLARG_TARGET_DEPENDENCIES+=("$@")
 }
 
@@ -51,7 +55,7 @@ satisfy() {
         done
         test -f "${full_target_path}" \\
             || panic "Target does not exist: ${script_basename}"
-        "${full_target_path}" || exit $?
+        "${full_target_path}" || return $?
     done
 }
 """
@@ -98,7 +102,9 @@ __BLARG_MAIN__() {
             (
                 set -Eeuo pipefail
                 apply
-            ) || return $?
+            )
+            apply_result=$?
+            test ${apply_result} -eq 0 || return ${apply_result}
         fi
         log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
     else
