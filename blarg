@@ -81,14 +81,6 @@ satisfied_if() {
     false
 }
 
-apply() {
-    # this command will normally be unreachable; the user's `apply` implementation will
-    # very often override this one.
-    #
-    # shellcheck disable=SC2317
-    true
-}
-
 """
 
 
@@ -117,9 +109,11 @@ __BLARG_MAIN__() {
 
     if [ ${satisfied_if_result} -ne 0 ]; then
         if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
-            echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+            if [ "$(type -t apply)" == "function" ]; then
+                echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+            fi
             return 1
-        else
+        elif [ "$(type -t apply)" == "function" ]; then
             (
                 set -Eeuo pipefail
                 apply

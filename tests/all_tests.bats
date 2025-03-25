@@ -347,6 +347,14 @@ dry-run: would apply run_once_b$'
     assert_no_stdout
 }
 
+@test 'dry_run - nested deps without apply - only shows targets with apply' {
+    use_target nested_deps nested_dep_1 nested_dep_2 nested_dep_3
+    capture_output blarg --dry-run ./targets/nested_deps.bash
+    assert_no_stderr
+    assert_exit_code 1
+    assert_stdout '^dry-run: would apply nested_dep_3$'
+}
+
 @test 'apply - non-zero command exit - exits immediately' {
     use_target apply_non_zero_exit
     capture_output blarg ./targets/apply_non_zero_exit.bash
