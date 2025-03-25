@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.4.2"
+VERSION = "0.5.0"
 
 
 STDLIB = """
@@ -40,12 +40,14 @@ depends_on() {
 }
 
 satisfy() {
-    local this_dir full_target_path search_dirs script_basename dir
+    local this_dir full_target_path search_dirs script_basename dir target_result final_result
     this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
     search_dirs=(
         "${this_dir}"
         "${BLARG_TARGETS_DIR}"
     )
+
+    final_result=0
     for script_basename in "$@"; do
         for dir in "${search_dirs[@]}"; do
             full_target_path="${dir}/${script_basename}.bash"
@@ -55,8 +57,17 @@ satisfy() {
         done
         test -f "${full_target_path}" \\
             || panic "Target does not exist: ${script_basename}"
-        "${full_target_path}" || return $?
+        "${full_target_path}"
+        target_result=$?
+        if [ ${target_result} -ne 0 ]; then
+            if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+                final_result=1
+            else
+                return ${target_result}
+            fi
+        fi
     done
+    return ${final_result}
 }
 """
 
@@ -70,22 +81,23 @@ satisfied_if() {
     false
 }
 
-apply() {
-    # this command will normally be unreachable; the user's `apply` implementation will
-    # very often override this one.
-    #
-    # shellcheck disable=SC2317
-    true
-}
-
 """
 
 
 EXECUTOR = """
 __BLARG_MAIN__() {
+    local final_result=0
     if [ ${#BLARG_TARGET_DEPENDENCIES[@]} -gt 0 ]; then
         log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [dependencies...]"
-        satisfy "${BLARG_TARGET_DEPENDENCIES[@]}" || return $?
+        satisfy "${BLARG_TARGET_DEPENDENCIES[@]}"
+        satisfy_result=$?
+        if [ ${satisfy_result} -ne 0 ]; then
+            if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+                final_result=1
+            else
+                return ${satisfy_result}
+            fi
+        fi
     fi
 
     log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [running...]"
@@ -97,8 +109,11 @@ __BLARG_MAIN__() {
 
     if [ ${satisfied_if_result} -ne 0 ]; then
         if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
-            echo "dry-run: would apply ${BLARG_TARGET_NAME}"
-        else
+            if [ "$(type -t apply)" == "function" ]; then
+                echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+            fi
+            return 1
+        elif [ "$(type -t apply)" == "function" ]; then
             (
                 set -Eeuo pipefail
                 apply
@@ -110,6 +125,8 @@ __BLARG_MAIN__() {
     else
         log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
     fi
+
+    return ${final_result}
 }
 
 __BLARG_MAIN__

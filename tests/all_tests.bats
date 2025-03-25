@@ -329,14 +329,30 @@ hello, there\.\.\.
     assert_exit_code 0
 }
 
-@test 'dry_run - never - executes apply' {
+@test 'dry_run - targets need apply - avoids executing apply' {
     use_target should_run_once run_once_a run_once_b
     capture_output blarg --dry-run ./targets/run_once_b.bash
     assert_no_stderr
-    assert_exit_code 0
+    assert_exit_code 1
     assert_stdout '^dry-run: would apply should_run_once
 dry-run: would apply run_once_a
 dry-run: would apply run_once_b$'
+}
+
+@test 'dry_run - targets satisfied - exit code 0' {
+    use_target satisfied_if_true
+    capture_output blarg --dry-run ./targets/satisfied_if_true.bash
+    assert_no_stderr
+    assert_exit_code 0
+    assert_no_stdout
+}
+
+@test 'dry_run - nested deps without apply - only shows targets with apply' {
+    use_target nested_deps nested_dep_1 nested_dep_2 nested_dep_3
+    capture_output blarg --dry-run ./targets/nested_deps.bash
+    assert_no_stderr
+    assert_exit_code 1
+    assert_stdout '^dry-run: would apply nested_dep_3$'
 }
 
 @test 'apply - non-zero command exit - exits immediately' {
