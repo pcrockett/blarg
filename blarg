@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.4.2"
+VERSION = "0.5.0"
 
 
 STDLIB = """
