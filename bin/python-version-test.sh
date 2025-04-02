@@ -18,7 +18,11 @@ main() {
     fi
     for v in "${versions[@]}"; do
         if [ "${SKIP_BLARG_DOCKER_BUILD:-}" == "" ]; then
-            docker build --build-arg "PYTHON_VERSION=${v}" --tag "blarg-ci:${v}" .
+            docker build \
+                --build-arg "PYTHON_VERSION=${v}" \
+                --build-arg "GITHUB_TOKEN=${GITHUB_TOKEN:-}" \
+                --tag "blarg-ci:${v}" \
+                .
         fi
         docker run --rm --mount "type=bind,source=.,target=/app,readonly" "blarg-ci:${v}"
     done

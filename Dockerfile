@@ -2,6 +2,7 @@ ARG PYTHON_VERSION=3.13
 FROM docker.io/library/python:${PYTHON_VERSION}-slim-bookworm
 SHELL [ "/bin/bash", "-Eeuo", "pipefail", "-c" ]
 ARG DEBIAN_FRONTEND=noninteractive
+ARG GITHUB_TOKEN
 
 # don't need to pin apt package versions
 # hadolint ignore=DL3008
