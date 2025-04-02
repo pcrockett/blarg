@@ -111,8 +111,10 @@ __BLARG_MAIN__() {
         if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
             if [ "$(type -t apply)" == "function" ]; then
                 echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+                return 1
+            else
+                return ${final_result}
             fi
-            return 1
         elif [ "$(type -t apply)" == "function" ]; then
             (
                 set -Eeuo pipefail
