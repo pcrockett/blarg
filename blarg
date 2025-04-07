@@ -31,6 +31,10 @@ log_verbose() {
     fi
 }
 
+is_dry_run() {
+    test "${BLARG_DRY_RUN+x}" == "x"
+}
+
 depends_on() {
     # this command may not be used in the user's target script, so we could get
     # a shellcheck "command unreachable" error here _sometimes_.
@@ -63,14 +67,19 @@ satisfy() {
 
     final_result=0
     for script_basename in "$@"; do
-        full_target_path="$(find_target "${script_basename}")" \
+        full_target_path="$(find_target "${script_basename}")" \\
             || panic "Target does not exist: ${script_basename}"
         "${full_target_path}"
         target_result=$?
         if [ ${target_result} -ne 0 ]; then
-            if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+            if is_dry_run; then
+                # `target_result` tells us that the target needs to run `apply`
+                # we're going to keep iterating through dependencies, but ultimately
+                # return 1.
                 final_result=1
             else
+                # `target_result` tells us that the target `apply` failed
+                # it's time to bail.
                 return ${target_result}
             fi
         fi
@@ -100,7 +109,7 @@ __BLARG_MAIN__() {
         satisfy "${BLARG_TARGET_DEPENDENCIES[@]}"
         satisfy_result=$?
         if [ ${satisfy_result} -ne 0 ]; then
-            if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+            if is_dry_run; then
                 final_result=1
             else
                 return ${satisfy_result}
@@ -116,7 +125,7 @@ __BLARG_MAIN__() {
     satisfied_if_result=$?
 
     if [ ${satisfied_if_result} -ne 0 ]; then
-        if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+        if is_dry_run; then
             if [ "$(type -t apply)" == "function" ]; then
                 echo "dry-run: would apply ${BLARG_TARGET_NAME}"
                 return 1
