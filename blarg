@@ -39,23 +39,31 @@ depends_on() {
     BLARG_TARGET_DEPENDENCIES+=("$@")
 }
 
-satisfy() {
-    local this_dir full_target_path search_dirs script_basename dir target_result final_result
+find_target() {
+    local script_basename="${1}"
+    local this_dir full_target_path search_dirs script_basename dir
     this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
     search_dirs=(
         "${this_dir}"
         "${BLARG_TARGETS_DIR}"
     )
 
+    for dir in "${search_dirs[@]}"; do
+        full_target_path="${dir}/${script_basename}.bash"
+        if [ -f "${full_target_path}" ]; then
+            echo "${full_target_path}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+satisfy() {
+    local full_target_path script_basename target_result final_result
+
     final_result=0
     for script_basename in "$@"; do
-        for dir in "${search_dirs[@]}"; do
-            full_target_path="${dir}/${script_basename}.bash"
-            if [ -f "${full_target_path}" ]; then
-                break
-            fi
-        done
-        test -f "${full_target_path}" \\
+        full_target_path="$(find_target "${script_basename}")" \
             || panic "Target does not exist: ${script_basename}"
         "${full_target_path}"
         target_result=$?
