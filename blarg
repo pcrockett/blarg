@@ -169,27 +169,27 @@ class CliArgs:
 
 class CliParser(argparse.ArgumentParser):
     def __init__(self):
-        super().__init__("blarg", description="Execute bash target files")
+        super().__init__("blarg", description="Execute bash target files <https://github.com/pcrockett/blarg>")
         self.add_argument(
-            "script_path", help="Script file to execute", default=None, nargs="?"
+            "script_path", help="script file to execute", default=None, nargs="?"
         )
         self.add_argument(
             "--dump-src",
             "-d",
             help=(
-                "Output the full source that would be executed"
+                "output the full source that would be executed "
                 "by Bash instead of running"
             ),
             action="store_true",
         )
         self.add_argument(
-            "--version", help="Display version number", action="store_true"
+            "--version", help="display version number", action="store_true"
         )
         self.add_argument(
-            "--verbose", "-v", help="Display verbose output", action="store_true"
+            "--verbose", "-v", help="display verbose output", action="store_true"
         )
         self.add_argument(
-            "--dry-run", "-r", help="Don't apply targets", action="store_true"
+            "--dry-run", "-r", help="don't apply targets", action="store_true"
         )
 
 
