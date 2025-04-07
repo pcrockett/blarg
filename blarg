@@ -110,8 +110,13 @@ __BLARG_MAIN__() {
         satisfy_result=$?
         if [ ${satisfy_result} -ne 0 ]; then
             if is_dry_run; then
+                # `satisfy_result` tells us that a dependency needs an `apply`
+                # we'll keep iterating through dependencies, but we know right now
+                # that we'll be returning an exit code of 1.
                 final_result=1
             else
+                # `satisfy_result` tells us that a dependency's `apply` failed.
+                # time to bail.
                 return ${satisfy_result}
             fi
         fi
@@ -124,27 +129,28 @@ __BLARG_MAIN__() {
     )
     satisfied_if_result=$?
 
-    if [ ${satisfied_if_result} -ne 0 ]; then
-        if is_dry_run; then
-            if [ "$(type -t apply)" == "function" ]; then
-                echo "dry-run: would apply ${BLARG_TARGET_NAME}"
-                return 1
-            else
-                return ${final_result}
-            fi
-        elif [ "$(type -t apply)" == "function" ]; then
-            (
-                set -Eeuo pipefail
-                apply
-            )
-            apply_result=$?
-            test ${apply_result} -eq 0 || panic "${BLARG_TARGET_NAME}.apply() returned with code ${apply_result}."
-        fi
-        log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
-    else
+    if [ ${satisfied_if_result} -eq 0 ]; then
         log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
+        return ${final_result}
     fi
 
+    if is_dry_run; then
+        if [ "$(type -t apply)" == "function" ]; then
+            echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+            return 1
+        else
+            return ${final_result}
+        fi
+    elif [ "$(type -t apply)" == "function" ]; then
+        (
+            set -Eeuo pipefail
+            apply
+        )
+        apply_result=$?
+        test ${apply_result} -eq 0 || panic "${BLARG_TARGET_NAME}.apply() returned with code ${apply_result}."
+    fi
+
+    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
     return ${final_result}
 }
 
