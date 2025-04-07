@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.5.0"
+VERSION = "0.5.1"
 
 
 STDLIB = """
@@ -31,6 +31,10 @@ log_verbose() {
     fi
 }
 
+is_dry_run() {
+    test "${BLARG_DRY_RUN+x}" == "x"
+}
+
 depends_on() {
     # this command may not be used in the user's target script, so we could get
     # a shellcheck "command unreachable" error here _sometimes_.
@@ -39,30 +43,43 @@ depends_on() {
     BLARG_TARGET_DEPENDENCIES+=("$@")
 }
 
-satisfy() {
-    local this_dir full_target_path search_dirs script_basename dir target_result final_result
+find_target() {
+    local script_basename="${1}"
+    local this_dir full_target_path search_dirs script_basename dir
     this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
     search_dirs=(
         "${this_dir}"
         "${BLARG_TARGETS_DIR}"
     )
 
+    for dir in "${search_dirs[@]}"; do
+        full_target_path="${dir}/${script_basename}.bash"
+        if [ -f "${full_target_path}" ]; then
+            echo "${full_target_path}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+satisfy() {
+    local full_target_path script_basename target_result final_result
+
     final_result=0
     for script_basename in "$@"; do
-        for dir in "${search_dirs[@]}"; do
-            full_target_path="${dir}/${script_basename}.bash"
-            if [ -f "${full_target_path}" ]; then
-                break
-            fi
-        done
-        test -f "${full_target_path}" \\
+        full_target_path="$(find_target "${script_basename}")" \\
             || panic "Target does not exist: ${script_basename}"
         "${full_target_path}"
         target_result=$?
         if [ ${target_result} -ne 0 ]; then
-            if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+            if is_dry_run; then
+                # `target_result` tells us that the target needs to run `apply`
+                # we're going to keep iterating through dependencies, but ultimately
+                # return 1.
                 final_result=1
             else
+                # `target_result` tells us that the target `apply` failed
+                # it's time to bail.
                 return ${target_result}
             fi
         fi
@@ -92,9 +109,14 @@ __BLARG_MAIN__() {
         satisfy "${BLARG_TARGET_DEPENDENCIES[@]}"
         satisfy_result=$?
         if [ ${satisfy_result} -ne 0 ]; then
-            if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
+            if is_dry_run; then
+                # `satisfy_result` tells us that a dependency needs an `apply`
+                # we'll keep iterating through dependencies, but we know right now
+                # that we'll be returning an exit code of 1.
                 final_result=1
             else
+                # `satisfy_result` tells us that a dependency's `apply` failed.
+                # time to bail.
                 return ${satisfy_result}
             fi
         fi
@@ -107,27 +129,28 @@ __BLARG_MAIN__() {
     )
     satisfied_if_result=$?
 
-    if [ ${satisfied_if_result} -ne 0 ]; then
-        if [ "${BLARG_DRY_RUN+x}" == "x" ]; then
-            if [ "$(type -t apply)" == "function" ]; then
-                echo "dry-run: would apply ${BLARG_TARGET_NAME}"
-                return 1
-            else
-                return ${final_result}
-            fi
-        elif [ "$(type -t apply)" == "function" ]; then
-            (
-                set -Eeuo pipefail
-                apply
-            )
-            apply_result=$?
-            test ${apply_result} -eq 0 || panic "${BLARG_TARGET_NAME}.apply() returned with code ${apply_result}."
-        fi
-        log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
-    else
+    if [ ${satisfied_if_result} -eq 0 ]; then
         log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [already satisfied]"
+        return ${final_result}
     fi
 
+    if is_dry_run; then
+        if [ "$(type -t apply)" == "function" ]; then
+            echo "dry-run: would apply ${BLARG_TARGET_NAME}"
+            return 1
+        else
+            return ${final_result}
+        fi
+    elif [ "$(type -t apply)" == "function" ]; then
+        (
+            set -Eeuo pipefail
+            apply
+        )
+        apply_result=$?
+        test ${apply_result} -eq 0 || panic "${BLARG_TARGET_NAME}.apply() returned with code ${apply_result}."
+    fi
+
+    log_verbose "${BLARG_INDENT}${BLARG_TARGET_NAME} [done]"
     return ${final_result}
 }
 
@@ -146,27 +169,27 @@ class CliArgs:
 
 class CliParser(argparse.ArgumentParser):
     def __init__(self):
-        super().__init__("blarg", description="Execute bash target files")
+        super().__init__("blarg", description="Execute bash target files <https://github.com/pcrockett/blarg>")
         self.add_argument(
-            "script_path", help="Script file to execute", default=None, nargs="?"
+            "script_path", help="script file to execute", default=None, nargs="?"
         )
         self.add_argument(
             "--dump-src",
             "-d",
             help=(
-                "Output the full source that would be executed"
+                "output the full source that would be executed "
                 "by Bash instead of running"
             ),
             action="store_true",
         )
         self.add_argument(
-            "--version", help="Display version number", action="store_true"
+            "--version", help="display version number", action="store_true"
         )
         self.add_argument(
-            "--verbose", "-v", help="Display verbose output", action="store_true"
+            "--verbose", "-v", help="display verbose output", action="store_true"
         )
         self.add_argument(
-            "--dry-run", "-r", help="Don't apply targets", action="store_true"
+            "--dry-run", "-r", help="don't apply targets", action="store_true"
         )
 
 
