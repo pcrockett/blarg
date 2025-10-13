@@ -45,8 +45,8 @@ capture_output() {
     stderr_file="$(mktemp)"
     stdout_file="$(mktemp)"
     capture_exit_code "${@}" \
-        > "${stdout_file}" \
-        2> "${stderr_file}"
+        >"${stdout_file}" \
+        2>"${stderr_file}"
     TEST_STDOUT="$(cat "${stdout_file}")"
     TEST_STDERR="$(cat "${stderr_file}")"
     rm -f "${stdout_file}" "${stderr_file}"

@@ -5,7 +5,7 @@ TEMP_FILE="$(mktemp)"
 func_a
 
 satisfied_if() {
-    func_b > "${TEMP_FILE}"
+    func_b >"${TEMP_FILE}"
 }
 
 apply() {

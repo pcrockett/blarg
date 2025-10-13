@@ -1,8 +1,8 @@
 #!/usr/bin/env blarg
 
 satisfied_if() {
-    false  # this should halt the function and return 1, causing apply() to run
-    true   # this should never run, but if it DID, it would prevent apply() from running
+    false # this should halt the function and return 1, causing apply() to run
+    true  # this should never run, but if it DID, it would prevent apply() from running
 }
 
 apply() {

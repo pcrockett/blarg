@@ -156,7 +156,8 @@ hello, there\.\.\.
     capture_output ./targets/print_env.bash
     assert_no_stderr
     assert_exit_code 0
-    stdout_regex="$(cat <<EOF
+    stdout_regex="$(
+        cat <<EOF
 ^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
 BLARG_INDENT=-->[[:space:]]
 BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
@@ -165,7 +166,7 @@ BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets
 BLARG_TARGET_NAME=print_env
 BLARG_TARGET_PATH=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash$
 EOF
-)"
+    )"
     assert_stdout "${stdout_regex}"
 
 }
@@ -249,7 +250,7 @@ FATAL: satisfy_fails\.apply\(\) returned with code 1\.$'
     )
     use_target "${targets[@]}"
     for t in "${targets[@]}"; do
-        blarg --dump-src "targets/${t}.bash" > "${t}_dump.sh"
+        blarg --dump-src "targets/${t}.bash" >"${t}_dump.sh"
     done
     shellcheck ./*_dump.sh
 }

@@ -1,6 +1,6 @@
 ARG PYTHON_VERSION=3.13
 FROM docker.io/library/python:${PYTHON_VERSION}-slim-bookworm
-SHELL [ "/bin/bash", "-Eeuo", "pipefail", "-c" ]
+SHELL [ "/bin/bash", "-euo", "pipefail", "-c" ]
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GITHUB_TOKEN
 
@@ -26,7 +26,9 @@ RUN \
 curl -SsfL https://philcrockett.com/yolo/v1.sh | bash -s -- docker/asdf && \
 . "${ASDF_DIR}/asdf.sh" && \
 asdf plugin add bats https://github.com/pcrockett/asdf-bats.git && \
-asdf plugin add shellcheck https://github.com/luizm/asdf-shellcheck.git
+asdf plugin add shellcheck https://github.com/luizm/asdf-shellcheck.git && \
+asdf plugin add shfmt https://github.com/pcrockett/asdf-shfmt.git && \
+asdf plugin add yamlfmt https://github.com/pcrockett/asdf-yamlfmt.git
 
 COPY --chown=user:user .tool-versions .
 

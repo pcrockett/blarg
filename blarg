@@ -169,7 +169,10 @@ class CliArgs:
 
 class CliParser(argparse.ArgumentParser):
     def __init__(self):
-        super().__init__("blarg", description="Execute bash target files <https://github.com/pcrockett/blarg>")
+        super().__init__(
+            "blarg",
+            description="Execute bash target files <https://github.com/pcrockett/blarg>",
+        )
         self.add_argument(
             "script_path", help="script file to execute", default=None, nargs="?"
         )

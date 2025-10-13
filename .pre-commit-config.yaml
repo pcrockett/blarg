@@ -1,20 +1,48 @@
+# yaml-language-server: $schema=https://json.schemastore.org/pre-commit-config.json
 repos:
-- repo: local
-  hooks:
-    - id: shellcheck
-      name: shellcheck
-      language: system
-      types_or: ["shell", "bats"]
-      entry: shellcheck
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
-  hooks:
-    - id: check-yaml
-    - id: end-of-file-fixer
-    - id: trailing-whitespace
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.6.5
-  hooks:
-    - id: ruff
-      args: [ --fix ]
-    - id: ruff-format
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
+    hooks:
+      # https://github.com/pre-commit/pre-commit-hooks?tab=readme-ov-file#hooks-available
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/rhysd/actionlint
+    rev: e7d448ef7507c20fc4c88a95d0c448b848cd6127  # frozen: v1.7.8
+    hooks:
+      - id: actionlint
+  - repo: https://github.com/adrienverge/yamllint
+    rev: 79a6b2b1392eaf49cdd32ac4f14be1a809bbd8f7  # frozen: v1.37.1
+    hooks:
+      - id: yamllint
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: shellcheck
+        language: system
+        types_or: ["shell", "bats"]
+        entry: shellcheck
+      - id: shfmt
+        name: shfmt
+        entry: shfmt
+        args:
+          - --write
+        language: system
+        types:
+          - shell
+      - id: yamlfmt
+        name: yamlfmt
+        entry: yamlfmt
+        language: system
+        types:
+          - yaml
