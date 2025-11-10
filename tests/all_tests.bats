@@ -371,3 +371,35 @@ dry-run: would apply run_once_b$'
     assert_stderr '^FATAL: apply_non_zero_exit\.apply\(\) returned with code 1\.$'
     assert_exit_code 1
 }
+
+@test 'depends_on - remote module target exists - runs' {
+    use_target external_module print_env foobar
+    pushd "${TEST_HOME}"
+    git config --global init.defaultBranch main
+    git config --global advice.detachedHead false
+    git init some_module
+    pushd some_module
+    git config user.email "nope@example.com"
+    git config user.name "nope"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" .
+    git add .
+    git commit -m "initial commit"
+    git tag v1
+    popd && popd
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://${TEST_HOME}/some_module/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr '^Cloning into .+\.blarg/modules/some_module/v1.+$'
+    assert_stdout '^foobar!
+.*
+BLARG_MODULE_some_module=/tmp/blarg-test\..+/\.blarg/modules/some_module/v1
+.*
+BLARG_TARGET_PATH=/tmp/blarg-test\..+/\.blarg/modules/some_module/v1/print_env\.bash
+.*
+Done!$'
+    assert_exit_code 0
+}

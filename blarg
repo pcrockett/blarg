@@ -6,8 +6,10 @@ import os
 import subprocess
 import sys
 
+from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
+from shutil import rmtree
 from tempfile import TemporaryDirectory
 from typing import List, Optional
 
@@ -45,12 +47,20 @@ depends_on() {
 
 find_target() {
     local script_basename="${1}"
-    local this_dir full_target_path search_dirs script_basename dir
-    this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
-    search_dirs=(
-        "${this_dir}"
-        "${BLARG_TARGETS_DIR}"
-    )
+    local module_name module_env this_dir full_target_path search_dirs script_basename dir
+
+    if [[ "${script_basename}" =~ ^@([a-zA-Z0-9_-]+):(.+)$ ]]; then
+        module_name="${BASH_REMATCH[1]}"
+        script_basename="${BASH_REMATCH[2]}"
+        module_env="BLARG_MODULE_${module_name}"
+        search_dirs=("${!module_env}")
+    else
+        this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
+        search_dirs=(
+            "${this_dir}"
+            "${BLARG_TARGETS_DIR}"
+        )
+    fi
 
     for dir in "${search_dirs[@]}"; do
         full_target_path="${dir}/${script_basename}.bash"
@@ -227,6 +237,65 @@ def generate_script(script_path: Path) -> str:
     return "".join(script_parts + [BASE, script, EXECUTOR]).lstrip()
 
 
+@dataclass
+class ExternalModule:
+    id: str
+    location: str
+    ref: str
+
+    def init(self, working_dir: Path) -> Path:
+        module_dir = working_dir / ".blarg" / "modules" / self.id / self.ref
+        module_dir.mkdir(parents=True, exist_ok=True)
+
+        if not (module_dir / ".git").exists():
+            try:
+                subprocess.run(
+                    [
+                        "git",
+                        "clone",
+                        "--depth",
+                        "1",
+                        "--branch",
+                        self.ref,
+                        self.location,
+                        module_dir,
+                    ],
+                    check=True,
+                )
+            except:
+                rmtree(module_dir)
+                raise
+        return module_dir
+
+
+@dataclass
+class BlargConfig:
+    modules: List[ExternalModule]
+
+
+def parse_config(config_path: Path) -> BlargConfig:
+    config = ConfigParser()
+    config.read(config_path)
+
+    modules: List[ExternalModule] = []
+    section: str
+    for section in config.sections():
+        (_, _, module_id) = section.partition(
+            "module."
+        )  # TODO: restrict valid chars like `/`
+        if module_id == "":
+            continue
+
+        modules.append(
+            ExternalModule(
+                module_id,
+                config[section]["location"],
+                config[section]["ref"],  # TODO: restrict valid chars like `/`
+            )
+        )
+    return BlargConfig(modules)
+
+
 def main() -> int:
     args = parse_args()
 
@@ -247,6 +316,13 @@ def main() -> int:
         return 0
 
     env = os.environ
+    working_dir = Path(os.getcwd())
+
+    config = parse_config(Path("blarg.conf"))
+    for module in config.modules:
+        module_dir = module.init(working_dir)
+        env[f"BLARG_MODULE_{module.id}"] = str(module_dir)
+
     resolved_path = script_path.resolve()
     env["BLARG_TARGET_PATH"] = str(resolved_path)
 
@@ -255,7 +331,7 @@ def main() -> int:
         env["BLARG_VERBOSE"] = str(is_verbose)
 
     if not env.get("BLARG_CWD"):
-        env["BLARG_CWD"] = os.getcwd()
+        env["BLARG_CWD"] = str(working_dir)
 
     targets_dir = env.get("BLARG_TARGETS_DIR")
     if targets_dir:
