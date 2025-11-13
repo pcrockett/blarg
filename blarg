@@ -45,11 +45,26 @@ depends_on() {
     BLARG_TARGET_DEPENDENCIES+=("$@")
 }
 
+is_external_module_target() {
+    [[ "${1}" =~ ^@([a-zA-Z0-9_-]+):(.+)$ ]]
+}
+
+get_module_dir() {
+    local script_basename="${1}"
+    if is_external_module_target "${script_basename}"; then
+        module_name="${BASH_REMATCH[1]}"
+        module_env="BLARG_MODULE_${module_name}"
+        echo "${!module_env}"
+    else
+        echo "${BLARG_MODULE_DIR}"
+    fi
+}
+
 find_target() {
     local script_basename="${1}"
     local module_name module_env this_dir full_target_path search_dirs script_basename dir
 
-    if [[ "${script_basename}" =~ ^@([a-zA-Z0-9_-]+):(.+)$ ]]; then
+    if is_external_module_target "${script_basename}"; then
         module_name="${BASH_REMATCH[1]}"
         script_basename="${BASH_REMATCH[2]}"
         module_env="BLARG_MODULE_${module_name}"
@@ -77,9 +92,13 @@ satisfy() {
 
     final_result=0
     for script_basename in "$@"; do
+
         full_target_path="$(find_target "${script_basename}")" \\
             || panic "Target does not exist: ${script_basename}"
-        "${full_target_path}"
+
+        BLARG_MODULE_DIR="$(get_module_dir "${script_basename}")" \\
+            "${full_target_path}"
+
         target_result=$?
         if [ ${target_result} -ne 0 ]; then
             if is_dry_run; then
@@ -332,6 +351,11 @@ def main() -> int:
 
     if not env.get("BLARG_CWD"):
         env["BLARG_CWD"] = str(working_dir)
+
+    if not env.get(
+        "BLARG_MODULE_DIR"
+    ):  # TODO: document difference between module dir and CWD
+        env["BLARG_MODULE_DIR"] = str(working_dir)
 
     targets_dir = env.get("BLARG_TARGETS_DIR")
     if targets_dir:

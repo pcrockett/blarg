@@ -160,6 +160,7 @@ hello, there\.\.\.
         cat <<EOF
 ^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
 BLARG_INDENT=-->[[:space:]]
+BLARG_MODULE_DIR=/tmp/blarg-test\.[[:alnum:]]+
 BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
 BLARG_RUN_DIR=/tmp/[[:print:]]+
 BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets
@@ -392,6 +393,7 @@ EOF
     assert_stdout '^foobar!
 BLARG_CWD=/tmp/blarg-test\..{6}
 .*
+BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
 BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
 .*
 BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/print_env\.bash
