@@ -295,17 +295,21 @@ class BlargConfig:
 
 
 def parse_config(config_path: Path) -> BlargConfig:
+    ALLOWED_MODULE_NAME_CHARS = set("abcdefghijklmnopqrstuvwxyz_0123456789")
     config = ConfigParser()
     config.read(config_path)
 
     modules: List[ExternalModule] = []
     section: str
     for section in config.sections():
-        (_, _, module_id) = section.partition(
-            "module."
-        )  # TODO: restrict valid chars like `/`
+        (_, _, module_id) = section.partition("module.")
         if module_id == "":
             continue
+
+        if len(set(module_id).difference(ALLOWED_MODULE_NAME_CHARS)) > 0:
+            raise ValueError(
+                f"Invalid module ID: `{module_id}`. Module IDs can only contain lowercase characters, underscores, and numbers."
+            )
 
         modules.append(
             ExternalModule(

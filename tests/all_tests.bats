@@ -404,3 +404,28 @@ BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets/p
 Done!$'
     assert_exit_code 0
 }
+
+@test 'config - invalid module name - error' {
+    use_target foobar
+
+    invalid_names=(
+        "invalid/module"
+        "INVALID_MODULE"
+        "invalid-module"
+        "@invalid_module"
+        'invalid\module'
+        "invalid module"
+        "invalid.module"
+    )
+    for name in "${invalid_names[@]}"; do
+        cat >blarg.conf <<EOF
+[module.${name}]
+location = file:///does/not/matter.git
+ref = v1
+EOF
+        capture_output blarg ./targets/foobar.bash
+        assert_exit_code 1
+        assert_no_stdout
+        assert_stderr 'ValueError: Invalid module ID'
+    done
+}
