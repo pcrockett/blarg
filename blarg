@@ -88,7 +88,7 @@ find_target() {
 }
 
 satisfy() {
-    local full_target_path script_basename target_result final_result
+    local full_target_path script_basename module_dir target_result final_result
 
     final_result=0
     for script_basename in "$@"; do
@@ -96,7 +96,9 @@ satisfy() {
         full_target_path="$(find_target "${script_basename}")" \\
             || panic "Target does not exist: ${script_basename}"
 
-        BLARG_MODULE_DIR="$(get_module_dir "${script_basename}")" \\
+        module_dir="$(get_module_dir "${script_basename}")"
+        BLARG_MODULE_DIR="${module_dir}" \\
+            BLARG_TARGETS_DIR="${module_dir}/targets" \\
             "${full_target_path}"
 
         target_result=$?

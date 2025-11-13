@@ -397,6 +397,8 @@ BLARG_CWD=/tmp/blarg-test\..{6}
 BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
 BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
 .*
+BLARG_TARGETS_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets
+.*
 BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets/print_env\.bash
 .*
 Done!$'
