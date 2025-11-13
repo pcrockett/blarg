@@ -378,7 +378,8 @@ dry-run: would apply run_once_b$'
 
     module_path="${TEST_HOME}/some_module"
     init_git_repo "${module_path}"
-    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}"
+    mkdir "${module_path}/targets"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}/targets"
     git -C "${module_path}" add .
     git -C "${module_path}" commit -m "initial commit"
     git -C "${module_path}" tag v1
@@ -389,14 +390,14 @@ location = file://${module_path}/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr '^Cloning into .+\.blarg/modules/some_module/v1.+$'
+    assert_stderr '^Cloning into '"'"'/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1'"'"'\.\.\.$'
     assert_stdout '^foobar!
 BLARG_CWD=/tmp/blarg-test\..{6}
 .*
 BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
 BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
 .*
-BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/print_env\.bash
+BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets/print_env\.bash
 .*
 Done!$'
     assert_exit_code 0
