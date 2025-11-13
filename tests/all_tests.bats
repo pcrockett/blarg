@@ -374,31 +374,27 @@ dry-run: would apply run_once_b$'
 
 @test 'depends_on - remote module target exists - runs' {
     use_target external_module print_env foobar
-    pushd "${TEST_HOME}"
-    git config --global init.defaultBranch main
-    git config --global advice.detachedHead false
-    git init some_module
-    pushd some_module
-    git config user.email "nope@example.com"
-    git config user.name "nope"
-    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" .
-    git add .
-    git commit -m "initial commit"
-    git tag v1
-    popd && popd
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}"
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+    git -C "${module_path}" tag v1
 
     cat >blarg.conf <<EOF
 [module.some_module]
-location = file://${TEST_HOME}/some_module/.git
+location = file://${module_path}/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
     assert_stderr '^Cloning into .+\.blarg/modules/some_module/v1.+$'
     assert_stdout '^foobar!
+BLARG_CWD=/tmp/blarg-test\..{6}
 .*
-BLARG_MODULE_some_module=/tmp/blarg-test\..+/\.blarg/modules/some_module/v1
+BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
 .*
-BLARG_TARGET_PATH=/tmp/blarg-test\..+/\.blarg/modules/some_module/v1/print_env\.bash
+BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/print_env\.bash
 .*
 Done!$'
     assert_exit_code 0
