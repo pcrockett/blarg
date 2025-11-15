@@ -14,7 +14,7 @@ from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
-VERSION = "0.5.2"
+VERSION = "0.6.0"
 
 
 STDLIB = """
