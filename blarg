@@ -50,7 +50,7 @@ is_external_module_target() {
 }
 
 get_module_dir() {
-    local script_basename="${1}"
+    local script_basename="${1}" module_name module_env
     if is_external_module_target "${script_basename}"; then
         module_name="${BASH_REMATCH[1]}"
         module_env="BLARG_MODULE_${module_name}"
