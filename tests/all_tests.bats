@@ -390,16 +390,16 @@ location = file://${module_path}/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr '^Cloning into '"'"'/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1'"'"'\.\.\.$'
+    assert_stderr '^Cloning into '"'"'/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c'"'"'\.\.\.$'
     assert_stdout '^foobar!
 BLARG_CWD=/tmp/blarg-test\..{6}
 .*
-BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
-BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
+BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c
+BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c
 .*
-BLARG_TARGETS_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets
+BLARG_TARGETS_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c/targets
 .*
-BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets/print_env\.bash
+BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c/targets/print_env\.bash
 .*
 Done!$'
     assert_exit_code 0

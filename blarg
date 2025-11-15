@@ -265,10 +265,14 @@ class ExternalModule:
     ref: str
 
     def init(self, working_dir: Path) -> Path:
-        module_dir = working_dir / ".blarg" / "modules" / self.id / self.ref
-        module_dir.mkdir(parents=True, exist_ok=True)
+        # `self.ref` could have some dangerous characters in it for file paths. let's
+        # instead use a sha1 hash of `self.ref` when figuring out where to store this
+        # external module locally.
+        ref_dir_name = hashlib.sha1(self.ref.encode("utf8")).hexdigest()[:12]
+        module_dir = working_dir / ".blarg" / "modules" / self.id / ref_dir_name
 
         if not (module_dir / ".git").exists():
+            module_dir.mkdir(parents=True, exist_ok=True)
             try:
                 subprocess.run(
                     [
@@ -315,7 +319,7 @@ def parse_config(config_path: Path) -> BlargConfig:
             ExternalModule(
                 module_id,
                 config[section]["location"],
-                config[section]["ref"],  # TODO: restrict valid chars like `/`
+                config[section]["ref"],
             )
         )
     return BlargConfig(modules)
