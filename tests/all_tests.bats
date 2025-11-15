@@ -390,6 +390,8 @@ location = file://${module_path}/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
+
+    # TODO: ensure clone doesn't happen a second time
     assert_stderr '^Cloning into '"'"'/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c'"'"'\.\.\.$'
     assert_stdout '^foobar!
 BLARG_CWD=/tmp/blarg-test\..{6}
@@ -428,4 +430,30 @@ EOF
         assert_no_stdout
         assert_stderr 'ValueError: Invalid module ID'
     done
+}
+
+@test 'lib.d - remote module target exists - runs external and not remote' {
+    use_target external_module print_env foobar
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/targets" "${module_path}/lib.d"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}/targets"
+    cat >"${module_path}/lib.d/00_foo.bash" <<'EOF'
+export BLARG_FOO_WAS_RUN=true
+EOF
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://${module_path}/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_exit_code 0
+    assert_stdout '.*
+BLARG_FOO_WAS_RUN=true
+.*'
 }

@@ -245,11 +245,11 @@ def list_dir_if_exists(dir_path: Path) -> List[Path]:
         return []
 
 
-def generate_script(script_path: Path) -> str:
+def generate_script(module_root_dir: Path, script_path: Path) -> str:
     script = f"# {script_path}\n" + script_path.read_text("utf8")
     script_parts = [STDLIB]
 
-    lib_d_dir = Path("lib.d")  # lib.d dir in current working directory
+    lib_d_dir = module_root_dir / "lib.d"
     for file in list_dir_if_exists(lib_d_dir):
         if not str(file).endswith(".sh") and not str(file).endswith(".bash"):
             continue
@@ -340,14 +340,24 @@ def main() -> int:
     if script_path.is_dir():
         script_path = script_path / "main.bash"
 
-    if args.dump_src:
-        print(generate_script(script_path))
-        return 0
-
     env = os.environ
     working_dir = Path(os.getcwd())
 
-    config = parse_config(Path("blarg.conf"))
+    if not env.get("BLARG_CWD"):
+        env["BLARG_CWD"] = str(working_dir)
+
+    module_dir_str = env.get("BLARG_MODULE_DIR")
+    if module_dir_str is None:  # TODO: document difference between module dir and CWD
+        module_dir = working_dir
+        env["BLARG_MODULE_DIR"] = str(module_dir)
+    else:
+        module_dir = Path(module_dir_str)
+
+    if args.dump_src:
+        print(generate_script(module_dir, script_path))
+        return 0
+
+    config = parse_config(Path("blarg.conf"))  # FIXME: should load from module dir
     for module in config.modules:
         module_dir = module.init(working_dir)
         env[f"BLARG_MODULE_{module.id}"] = str(module_dir)
@@ -359,19 +369,11 @@ def main() -> int:
     if is_verbose:
         env["BLARG_VERBOSE"] = str(is_verbose)
 
-    if not env.get("BLARG_CWD"):
-        env["BLARG_CWD"] = str(working_dir)
-
-    if not env.get(
-        "BLARG_MODULE_DIR"
-    ):  # TODO: document difference between module dir and CWD
-        env["BLARG_MODULE_DIR"] = str(working_dir)
-
     targets_dir = env.get("BLARG_TARGETS_DIR")
     if targets_dir:
         targets_dir = Path(targets_dir).resolve()
     else:
-        targets_dir = str(Path.cwd() / "targets")
+        targets_dir = str(Path.cwd() / "targets")  # FIXME: should load from module dir
         env["BLARG_TARGETS_DIR"] = targets_dir
 
     dry_run = args.dry_run or "BLARG_DRY_RUN" in env
@@ -427,7 +429,7 @@ def main() -> int:
     try:
         result = subprocess.run(
             ["bash", "-Euo", "pipefail"],
-            input=generate_script(script_path),
+            input=generate_script(module_dir, script_path),
             encoding="utf8",
             env=env,
         )
