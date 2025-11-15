@@ -357,7 +357,7 @@ def main() -> int:
         print(generate_script(module_dir, script_path))
         return 0
 
-    config = parse_config(Path("blarg.conf"))  # FIXME: should load from module dir
+    config = parse_config(module_dir / "blarg.conf")
     for module in config.modules:
         module_dir = module.init(working_dir)
         env[f"BLARG_MODULE_{module.id}"] = str(module_dir)

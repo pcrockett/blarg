@@ -432,7 +432,7 @@ EOF
     done
 }
 
-@test 'lib.d - remote module target exists - runs external and not remote' {
+@test 'lib.d - remote module target exists - runs external lib.d' {
     use_target external_module print_env foobar
 
     module_path="${TEST_HOME}/some_module"
@@ -456,4 +456,56 @@ EOF
     assert_stdout '.*
 BLARG_FOO_WAS_RUN=true
 .*'
+}
+
+@test 'blarg.conf - nested external modules - loads correctly' {
+    module_a="${TEST_HOME}/module_a"
+    module_b="${TEST_HOME}/module_b"
+
+    for module in "${module_a}" "$module_b"; do
+        init_git_repo "${module}"
+        mkdir "${module}/targets"
+    done
+
+    cat >"${module_a}/blarg.conf" <<EOF
+[module.b]
+location = file://${module_b}/.git
+ref = v1
+EOF
+
+    cat >"${module_a}/targets/needs_b.bash" <<'EOF'
+#!/usr/bin/env blarg
+depends_on @b:say_hello
+EOF
+
+    cat >"${module_b}/targets/say_hello.bash" <<'EOF'
+#!/usr/bin/env blarg
+apply() {
+    echo "hello from b!"
+}
+EOF
+
+    cat >blarg.conf <<EOF
+[module.a]
+location = file://${module_a}/.git
+ref = v1
+EOF
+
+    for module in "${module_a}" "$module_b"; do
+        chmod +x "${module}/targets/"*.bash
+        git -C "${module}" add .
+        git -C "${module}" commit -m "initial commit"
+        git -C "${module}" tag v1
+    done
+
+    mkdir targets
+    cat >targets/say_hello.bash <<'EOF'
+#!/usr/bin/env blarg
+depends_on @a:needs_b
+EOF
+    chmod +x targets/say_hello.bash
+
+    capture_output blarg ./targets/say_hello.bash
+    assert_exit_code 0
+    assert_stdout '^hello from b!$'
 }
