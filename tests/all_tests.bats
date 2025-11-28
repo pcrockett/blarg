@@ -391,9 +391,8 @@ ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
 
-    # TODO: ensure clone doesn't happen a second time
-    assert_stderr '^Cloning into '"'"'/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c'"'"'\.\.\.$'
-    assert_stdout '^foobar!
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/5a6df720540c'\\.\\.\\.\$"
+    expected_stdout='^foobar!
 BLARG_CWD=/tmp/blarg-test\..{6}
 .*
 BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c
@@ -404,6 +403,13 @@ BLARG_TARGETS_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c
 BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c/targets/print_env\.bash
 .*
 Done!$'
+    assert_stdout "${expected_stdout}"
+    assert_exit_code 0
+
+    # do it again, but this time there should be no git clone
+    capture_output blarg ./targets/external_module.bash
+    assert_no_stderr
+    assert_stdout "${expected_stdout}"
     assert_exit_code 0
 }
 
