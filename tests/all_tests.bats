@@ -536,3 +536,6 @@ EOF
     assert_exit_code 0
     assert_stdout '^hello from b!$'
 }
+
+# TODO: test when module is referenced in target, but not config file
+# TODO: test when remote module repo doesn't exist
