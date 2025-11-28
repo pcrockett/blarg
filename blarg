@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -273,6 +274,8 @@ class ExternalModule:
 
         if not (module_dir / ".git").exists():
             module_dir.mkdir(parents=True, exist_ok=True)
+            source_dir = re.sub("^file://~", Path.home().as_uri(), self.location)
+
             try:
                 subprocess.run(
                     [
@@ -282,7 +285,7 @@ class ExternalModule:
                         "1",
                         "--branch",
                         self.ref,
-                        self.location,
+                        source_dir,
                         module_dir,
                     ],
                     check=True,

@@ -413,6 +413,27 @@ Done!$'
     assert_exit_code 0
 }
 
+@test 'depends_on - tilde in external module path - expands to home' {
+    use_target external_module print_env foobar
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/targets"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}/targets"
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://~/some_module/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/5a6df720540c'\\.\\.\\.\$"
+    assert_exit_code 0
+}
+
 @test 'config - invalid module name - error' {
     use_target foobar
 
