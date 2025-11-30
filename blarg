@@ -69,7 +69,11 @@ find_target() {
         module_name="${BASH_REMATCH[1]}"
         script_basename="${BASH_REMATCH[2]}"
         module_env="BLARG_MODULE_${module_name}"
-        search_dirs=("${!module_env}/targets")
+        if [ "${!module_env:-}" == "" ]; then
+            search_dirs=()
+        else
+            search_dirs=("${!module_env}/targets")
+        fi
     else
         this_dir="$(dirname "${BLARG_TARGET_PATH}")" || panic "unable to get directory name"
         search_dirs=(

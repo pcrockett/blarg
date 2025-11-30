@@ -537,5 +537,46 @@ EOF
     assert_stdout '^hello from b!$'
 }
 
-# TODO: test when module is referenced in target, but not config file
-# TODO: test when remote module repo doesn't exist
+@test 'depends_on - external target doesnt exist - error' {
+    use_target external_module
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    git -C "${module_path}" commit --allow-empty -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://~/some_module/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/5a6df720540c'\\.\\.\\.
+FATAL: Target does not exist: @some_module:foobar\$"
+    assert_no_stdout
+    assert_exit_code 1
+}
+
+@test 'depends_on - external module not in conf - error' {
+    use_target external_module
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr "^FATAL: Target does not exist: @some_module:foobar\$"
+    assert_no_stdout
+    assert_exit_code 1
+}
+
+@test 'depends_on - external module doesnt exist - error' {
+    use_target external_module
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://~/some_module/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/5a6df720540c'\\.\\.\\.
+.*fatal: Could not read from remote repository\.
+"
+    assert_no_stdout
+    assert_exit_code 1
+}
