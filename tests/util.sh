@@ -48,6 +48,15 @@ use_lib() {
     cp -r "${REPO_HOME}/tests/lib.d" "${TEST_CWD}"
 }
 
+init_git_repo() {
+    repo_path="${1}"
+    git config --global init.defaultBranch main
+    git config --global advice.detachedHead false
+    git config --global user.email "nope@example.com"
+    git config --global user.name "nope"
+    git init "${repo_path}"
+}
+
 # shellcheck disable=SC2034  # this function returns data via variables
 capture_output() {
     local stderr_file stdout_file

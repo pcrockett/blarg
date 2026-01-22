@@ -160,6 +160,7 @@ hello, there\.\.\.
         cat <<EOF
 ^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
 BLARG_INDENT=-->[[:space:]]
+BLARG_MODULE_DIR=/tmp/blarg-test\.[[:alnum:]]+
 BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
 BLARG_RUN_DIR=/tmp/[[:print:]]+
 BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets
@@ -369,5 +370,238 @@ dry-run: would apply run_once_b$'
     capture_output blarg ./targets/apply_non_zero_exit.bash
     assert_no_stdout
     assert_stderr '^FATAL: apply_non_zero_exit\.apply\(\) returned with code 1\.$'
+    assert_exit_code 1
+}
+
+@test 'depends_on - remote module target exists - runs' {
+    use_target external_module print_env foobar
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/targets"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}/targets"
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://${module_path}/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.\$"
+    expected_stdout='^foobar!
+BLARG_CWD=/tmp/blarg-test\..{6}
+.*
+BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
+BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
+.*
+BLARG_TARGETS_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets
+.*
+BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets/print_env\.bash
+.*
+Done!$'
+    assert_stdout "${expected_stdout}"
+    assert_exit_code 0
+
+    # do it again, but this time there should be no git clone
+    capture_output blarg ./targets/external_module.bash
+    assert_no_stderr
+    assert_stdout "${expected_stdout}"
+    assert_exit_code 0
+}
+
+@test 'depends_on - tilde in external module path - expands to home' {
+    use_target external_module print_env foobar
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/targets"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}/targets"
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://~/some_module/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.\$"
+    assert_exit_code 0
+}
+
+@test 'config - invalid module name - error' {
+    use_target foobar
+
+    invalid_names=(
+        "invalid/module"
+        "INVALID_MODULE"
+        "invalid-module"
+        "@invalid_module"
+        'invalid\module'
+        "invalid module"
+        "invalid.module"
+    )
+    for name in "${invalid_names[@]}"; do
+        cat >blarg.conf <<EOF
+[module.${name}]
+location = file:///does/not/matter.git
+ref = v1
+EOF
+        capture_output blarg ./targets/foobar.bash
+        assert_exit_code 1
+        assert_no_stdout
+        assert_stderr 'ValueError: Invalid module ID'
+    done
+}
+
+@test 'lib.d - remote module target exists - runs external lib.d' {
+    use_target external_module print_env foobar
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/targets" "${module_path}/lib.d"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}/targets"
+    cat >"${module_path}/lib.d/00_foo.bash" <<'EOF'
+export BLARG_FOO_WAS_RUN=true
+EOF
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://${module_path}/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_exit_code 0
+    assert_stdout '.*
+BLARG_FOO_WAS_RUN=true
+.*'
+}
+
+@test 'config - funny chars in remote ref - sanitizes' {
+    use_target external_module print_env foobar
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/targets" "${module_path}/lib.d"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}/targets"
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+
+    tag_name='v1.2.3-foo_bar/wHaTeVeR!'
+    git -C "${module_path}" tag "${tag_name}"
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://${module_path}/.git
+ref = ${tag_name}
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_exit_code 0
+    assert_stdout '.*
+BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1_2_3-foo_bar_wHaTeVeR_/targets/print_env\.bash
+.*'
+}
+
+@test 'blarg.conf - nested external modules - loads correctly' {
+    module_a="${TEST_HOME}/module_a"
+    module_b="${TEST_HOME}/module_b"
+
+    for module in "${module_a}" "$module_b"; do
+        init_git_repo "${module}"
+        mkdir "${module}/targets"
+    done
+
+    cat >"${module_a}/blarg.conf" <<EOF
+[module.b]
+location = file://${module_b}/.git
+ref = v1
+EOF
+
+    cat >"${module_a}/targets/needs_b.bash" <<'EOF'
+#!/usr/bin/env blarg
+depends_on @b:say_hello
+EOF
+
+    cat >"${module_b}/targets/say_hello.bash" <<'EOF'
+#!/usr/bin/env blarg
+apply() {
+    echo "hello from b!"
+}
+EOF
+
+    cat >blarg.conf <<EOF
+[module.a]
+location = file://${module_a}/.git
+ref = v1
+EOF
+
+    for module in "${module_a}" "$module_b"; do
+        chmod +x "${module}/targets/"*.bash
+        git -C "${module}" add .
+        git -C "${module}" commit -m "initial commit"
+        git -C "${module}" tag v1
+    done
+
+    mkdir targets
+    cat >targets/say_hello.bash <<'EOF'
+#!/usr/bin/env blarg
+depends_on @a:needs_b
+EOF
+    chmod +x targets/say_hello.bash
+
+    capture_output blarg ./targets/say_hello.bash
+    assert_exit_code 0
+    assert_stdout '^hello from b!$'
+}
+
+@test 'depends_on - external target doesnt exist - error' {
+    use_target external_module
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    git -C "${module_path}" commit --allow-empty -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://~/some_module/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.
+FATAL: Target does not exist: @some_module:foobar\$"
+    assert_no_stdout
+    assert_exit_code 1
+}
+
+@test 'depends_on - external module not in conf - error' {
+    use_target external_module
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr "^FATAL: Target does not exist: @some_module:foobar\$"
+    assert_no_stdout
+    assert_exit_code 1
+}
+
+@test 'depends_on - external module doesnt exist - error' {
+    use_target external_module
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://~/some_module/.git
+ref = v1
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.
+.*fatal: Could not read from remote repository\.
+"
+    assert_no_stdout
     assert_exit_code 1
 }
