@@ -391,16 +391,16 @@ ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
 
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/5a6df720540c'\\.\\.\\.\$"
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.\$"
     expected_stdout='^foobar!
 BLARG_CWD=/tmp/blarg-test\..{6}
 .*
-BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c
-BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c
+BLARG_MODULE_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
+BLARG_MODULE_some_module=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1
 .*
-BLARG_TARGETS_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c/targets
+BLARG_TARGETS_DIR=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets
 .*
-BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/5a6df720540c/targets/print_env\.bash
+BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1/targets/print_env\.bash
 .*
 Done!$'
     assert_stdout "${expected_stdout}"
@@ -430,7 +430,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/5a6df720540c'\\.\\.\\.\$"
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.\$"
     assert_exit_code 0
 }
 
@@ -482,6 +482,31 @@ EOF
     assert_exit_code 0
     assert_stdout '.*
 BLARG_FOO_WAS_RUN=true
+.*'
+}
+
+@test 'config - funny chars in remote ref - sanitizes' {
+    use_target external_module print_env foobar
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/targets" "${module_path}/lib.d"
+    mv "${TEST_CWD}/targets/print_env.bash" "${TEST_CWD}/targets/foobar.bash" "${module_path}/targets"
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+
+    tag_name='v1.2.3-foo_bar/wHaTeVeR!'
+    git -C "${module_path}" tag "${tag_name}"
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://${module_path}/.git
+ref = ${tag_name}
+EOF
+    capture_output blarg ./targets/external_module.bash
+    assert_exit_code 0
+    assert_stdout '.*
+BLARG_TARGET_PATH=/tmp/blarg-test\..{6}/\.blarg/modules/some_module/v1_2_3-foo_bar_wHaTeVeR_/targets/print_env\.bash
 .*'
 }
 
@@ -551,7 +576,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/5a6df720540c'\\.\\.\\.
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.
 FATAL: Target does not exist: @some_module:foobar\$"
     assert_no_stdout
     assert_exit_code 1
@@ -574,7 +599,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/5a6df720540c'\\.\\.\\.
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.
 .*fatal: Could not read from remote repository\.
 "
     assert_no_stdout

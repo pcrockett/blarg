@@ -271,9 +271,22 @@ class ExternalModule:
 
     def init(self, working_dir: Path) -> Path:
         # `self.ref` could have some dangerous characters in it for file paths. let's
-        # instead use a sha1 hash of `self.ref` when figuring out where to store this
-        # external module locally.
-        ref_dir_name = hashlib.sha1(self.ref.encode("utf8")).hexdigest()[:12]
+        # use an allowlist of known-safe characters, and replace everything else with
+        # an underscore.
+        #
+        # if this ever gets ported to work on Windows, it needs to be adapted to account
+        # for reserved file names as well.
+        ALLOWED_REF_DIR_CHARS = set(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-0123456789"
+        )
+        sanitized_ref_chars: list[str] = []
+        for ch in self.ref:
+            if ch in ALLOWED_REF_DIR_CHARS:
+                sanitized_ref_chars.append(ch)
+            else:
+                sanitized_ref_chars.append("_")
+        ref_dir_name = "".join(sanitized_ref_chars)
+
         module_dir = working_dir / ".blarg" / "modules" / self.id / ref_dir_name
 
         if not (module_dir / ".git").exists():
@@ -380,7 +393,7 @@ def main() -> int:
     if targets_dir:
         targets_dir = Path(targets_dir).resolve()
     else:
-        targets_dir = str(Path.cwd() / "targets")  # FIXME: should load from module dir
+        targets_dir = str(Path.cwd() / "targets")
         env["BLARG_TARGETS_DIR"] = targets_dir
 
     dry_run = args.dry_run or "BLARG_DRY_RUN" in env
