@@ -20,11 +20,10 @@ WORKDIR /app
 
 ENV HOME=/home/user
 ENV ASDF_DIR="${HOME}/.asdf"
-ENV PATH="${ASDF_DIR}/bin:${ASDF_DIR}/shims:${PATH}"
+ENV PATH="${HOME}/.local/bin:${ASDF_DIR}/shims:${PATH}"
 
 RUN \
-curl -SsfL https://philcrockett.com/yolo/v1.sh | bash -s -- docker/asdf && \
-. "${ASDF_DIR}/asdf.sh" && \
+curl -SsfL https://philcrockett.com/yolo/v1.sh | bash -s -- asdf && \
 asdf plugin add bats https://github.com/pcrockett/asdf-bats.git && \
 asdf plugin add shellcheck https://github.com/luizm/asdf-shellcheck.git && \
 asdf plugin add shfmt https://github.com/pcrockett/asdf-shfmt.git && \

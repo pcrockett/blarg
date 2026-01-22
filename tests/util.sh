@@ -8,6 +8,15 @@ setup() {
     mkdir -p "${TEST_HOME}/.local/bin"
     cp blarg "${TEST_HOME}/.local/bin"
     cp .tool-versions "${TEST_CWD}"
+
+    # it seems that newer versions of asdf don't like it when your ASDF_DIR is outside
+    # of HOME
+    if [ "${ASDF_DIR:-}" != "" ] && [ -d "${ASDF_DIR}" ]; then
+        new_asdf_dir="${TEST_HOME}/.asdf"
+        ln --symbolic "${ASDF_DIR}" "${new_asdf_dir}"
+        ASDF_DIR="${new_asdf_dir}"
+    fi
+
     cd "${TEST_CWD}"
     PATH="${TEST_HOME}/.local/bin:${PATH}"
     export HOME="${TEST_HOME}"
