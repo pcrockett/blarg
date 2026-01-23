@@ -13,6 +13,7 @@ from pathlib import Path
 from shutil import rmtree
 from tempfile import TemporaryDirectory
 from typing import List, Optional
+from urllib.parse import parse_qs, urlparse, urlunparse
 
 
 VERSION = "0.6.0"
@@ -194,55 +195,6 @@ __BLARG_MAIN__
 """
 
 
-@dataclass
-class CliArgs:
-    script_path: Optional[Path]
-    dump_src: bool
-    version: bool
-    verbose: bool
-    dry_run: bool
-
-
-class CliParser(argparse.ArgumentParser):
-    def __init__(self):
-        super().__init__(
-            "blarg",
-            description="Execute bash target files <https://github.com/pcrockett/blarg>",
-        )
-        self.add_argument(
-            "script_path", help="script file to execute", default=None, nargs="?"
-        )
-        self.add_argument(
-            "--dump-src",
-            "-d",
-            help=(
-                "output the full source that would be executed "
-                "by Bash instead of running"
-            ),
-            action="store_true",
-        )
-        self.add_argument(
-            "--version", help="display version number", action="store_true"
-        )
-        self.add_argument(
-            "--verbose", "-v", help="display verbose output", action="store_true"
-        )
-        self.add_argument(
-            "--dry-run", "-r", help="don't apply targets", action="store_true"
-        )
-
-
-def parse_args() -> CliArgs:
-    args = CliParser().parse_args()
-    return CliArgs(
-        Path(args.script_path) if args.script_path else None,
-        args.dump_src,
-        args.version,
-        args.verbose,
-        args.dry_run,
-    )
-
-
 def list_dir_if_exists(dir_path: Path) -> List[Path]:
     try:
         return sorted([p.resolve() for p in dir_path.iterdir() if not p.is_dir()])
@@ -269,7 +221,7 @@ class ExternalModule:
     location: str
     ref: str
 
-    def init(self, working_dir: Path) -> Path:
+    def ref_dir_name(self) -> str:
         # `self.ref` could have some dangerous characters in it for file paths. let's
         # use an allowlist of known-safe characters, and replace everything else with
         # an underscore.
@@ -285,10 +237,13 @@ class ExternalModule:
                 sanitized_ref_chars.append(ch)
             else:
                 sanitized_ref_chars.append("_")
-        ref_dir_name = "".join(sanitized_ref_chars)
+        return "".join(sanitized_ref_chars)
 
-        module_dir = working_dir / ".blarg" / "modules" / self.id / ref_dir_name
+    def module_dir(self, working_dir: Path) -> Path:
+        return working_dir / ".blarg" / "modules" / self.id / self.ref_dir_name()
 
+    def init(self, working_dir: Path) -> Path:
+        module_dir = self.module_dir(working_dir)
         if not (module_dir / ".git").exists():
             module_dir.mkdir(parents=True, exist_ok=True)
             source_dir = re.sub("^file://~", Path.home().as_uri(), self.location)
@@ -345,6 +300,76 @@ def parse_config(config_path: Path) -> BlargConfig:
     return BlargConfig(modules)
 
 
+@dataclass
+class CliArgs:
+    target: Optional[str]
+    module: Optional[ExternalModule]
+    dump_src: bool
+    version: bool
+    verbose: bool
+    dry_run: bool
+
+
+class CliParser(argparse.ArgumentParser):
+    def __init__(self):
+        super().__init__(
+            "blarg",
+            description="Execute bash target files <https://github.com/pcrockett/blarg>",
+        )
+        self.add_argument(
+            "target", help="script file to execute", default=None, nargs="?"
+        )
+        self.add_argument(
+            "--module",
+            "-m",
+            help="repository where target lives",
+            default=None,
+            nargs="?",
+        )
+        self.add_argument(
+            "--dump-src",
+            "-d",
+            help=(
+                "output the full source that would be executed "
+                "by Bash instead of running"
+            ),
+            action="store_true",
+        )
+        self.add_argument(
+            "--version", help="display version number", action="store_true"
+        )
+        self.add_argument(
+            "--verbose", "-v", help="display verbose output", action="store_true"
+        )
+        self.add_argument(
+            "--dry-run", "-r", help="don't apply targets", action="store_true"
+        )
+
+
+def parse_args() -> CliArgs:
+    args = CliParser().parse_args()
+
+    module: Optional[ExternalModule] = None
+    if args.module:
+        if not args.target:
+            raise AttributeError("Must specify target when --module is specified")
+
+        parsed = urlparse(args.module)
+        ref = parse_qs(parsed.query)["ref"][0]  # FIXME: lots of edge cases to handle
+        location = str(urlunparse(parsed._replace(query="")))
+        module_id = hashlib.sha1(location.encode("utf8")).hexdigest()
+        module = ExternalModule(module_id, location, ref)
+
+    return CliArgs(
+        args.target,
+        module,
+        args.dump_src,
+        args.version,
+        args.verbose,
+        args.dry_run,
+    )
+
+
 def main() -> int:
     args = parse_args()
 
@@ -352,13 +377,9 @@ def main() -> int:
         print(f"blarg version {VERSION}")
         return 0
 
-    if not args.script_path:
+    if not args.target:
         CliParser().print_help()
         return 0
-
-    script_path = args.script_path
-    if script_path.is_dir():
-        script_path = script_path / "main.bash"
 
     env = os.environ
     working_dir = Path(os.getcwd())
@@ -373,14 +394,29 @@ def main() -> int:
     else:
         module_dir = Path(module_dir_str)
 
-    if args.dump_src:
-        print(generate_script(module_dir, script_path))
-        return 0
-
     config = parse_config(module_dir / "blarg.conf")
+
+    if args.module:
+        config.modules.append(args.module)
+
     for module in config.modules:
         module_dir = module.init(working_dir)
         env[f"BLARG_MODULE_{module.id}"] = str(module_dir)
+
+    script_path: Path
+    if args.module:
+        module_dir = args.module.module_dir(working_dir)
+        script_path = module_dir / "targets" / args.target
+        env["BLARG_MODULE_DIR"] = str(module_dir)
+    else:
+        script_path = Path(args.target)
+
+    if script_path.is_dir():
+        script_path = script_path / "main.bash"
+
+    if args.dump_src:
+        print(generate_script(module_dir, script_path))
+        return 0
 
     resolved_path = script_path.resolve()
     env["BLARG_TARGET_PATH"] = str(resolved_path)
