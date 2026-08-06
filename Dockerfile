@@ -1,5 +1,7 @@
 ARG PYTHON_VERSION=3.14
-FROM docker.io/library/python:${PYTHON_VERSION}-slim-trixie
+
+# intentionally using older bookworm, since python trixie doesn't go lower than 3.10
+FROM docker.io/library/python:${PYTHON_VERSION}-slim-bookworm
 SHELL [ "/bin/bash", "-euo", "pipefail", "-c" ]
 ARG DEBIAN_FRONTEND=noninteractive
 
