@@ -21,7 +21,6 @@ main() {
         if [ "${SKIP_BLARG_DOCKER_BUILD:-}" == "" ]; then
             docker build \
                 --build-arg "PYTHON_VERSION=${v}" \
-                --build-arg "GITHUB_TOKEN=${GITHUB_TOKEN:-}" \
                 --tag "blarg-ci:${v}" \
                 .
         fi

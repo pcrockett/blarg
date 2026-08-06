@@ -126,6 +126,7 @@ satisfy() {
 
 
 BASE = """
+# shellcheck disable=SC2329  # will be called dynamically
 satisfied_if() {
     # this command will normally be unreachable; the user's `satisfied_if`
     # implementation will very often override this one.
