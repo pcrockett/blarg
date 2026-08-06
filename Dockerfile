@@ -28,7 +28,7 @@ ENV PATH="${HOME}/.local/bin:${PATH}"
 COPY --chown=user:user mise.toml mise.lock ./
 RUN \
 mise trust && \
-mise use uv && \
+mise use uv@0.12.2 && \
 mise install
 
 ENTRYPOINT [ "mise", "exec", "--" ]
