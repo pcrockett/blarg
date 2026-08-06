@@ -1,2 +1,4 @@
 /.blarg/
 /.envrc
+__pycache__/
+*.pyc

@@ -485,6 +485,65 @@ BLARG_FOO_WAS_RUN=true
 .*'
 }
 
+@test 'lib.d - external module declared - local target keeps its own lib.d' {
+    # 1. define a `func_a` inside the root lib.d directory.
+    # 2. then define ANOTHER `func_a` in an external module.
+    # 3. assert that the external module's `func_a` doesn't override the root `func_a`.
+
+    use_target lib_d
+    use_lib # defines a root module `func_a`
+
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/lib.d" "${module_path}/targets"
+
+    # define external module `func_a`
+    cat >"${module_path}/lib.d/func_a.sh" <<'EOF'
+# shellcheck shell=bash
+
+func_a() {
+    echo "the external module function A was called!"
+}
+EOF
+
+    # define external module target that calls `func_a`
+    cat >"${module_path}/targets/main.bash" <<'EOF'
+#!/usr/bin/env blarg
+
+apply() {
+    func_a
+}
+EOF
+    chmod +x "${module_path}/targets/main.bash"
+
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://${module_path}/.git
+ref = v1
+EOF
+
+    cat >targets/external_func_a.bash <<'EOF'
+#!/usr/bin/env blarg
+depends_on @some_module:main
+EOF
+    chmod +x targets/external_func_a.bash
+
+    capture_output ./targets/lib_d.bash
+    assert_stdout '^function A was called!
+function B was called!
+function C was called!$'
+    assert_exit_code 0
+
+    capture_output ./targets/external_func_a.bash
+    assert_no_stderr
+    assert_stdout '^the external module function A was called!$'
+    assert_exit_code 0
+}
+
 @test 'config - funny chars in remote ref - sanitizes' {
     use_target external_module print_env foobar
 
