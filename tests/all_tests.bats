@@ -485,6 +485,40 @@ BLARG_FOO_WAS_RUN=true
 .*'
 }
 
+@test 'lib.d - external module declared - local target keeps its own lib.d' {
+    use_target lib_d
+    use_lib
+
+    # The module ships a `func_a` of its own. Declaring the module must not put
+    # the module's lib.d in front of ours for a *local* target -- so the func_a
+    # that runs below should still be ours, and func_b / func_c should exist.
+    module_path="${TEST_HOME}/some_module"
+    init_git_repo "${module_path}"
+    mkdir "${module_path}/lib.d"
+    cat >"${module_path}/lib.d/func_a.sh" <<'EOF'
+# shellcheck shell=bash
+
+func_a() {
+    echo "the module's function A was called!"
+}
+EOF
+    git -C "${module_path}" add .
+    git -C "${module_path}" commit -m "initial commit"
+    git -C "${module_path}" tag v1
+
+    cat >blarg.conf <<EOF
+[module.some_module]
+location = file://${module_path}/.git
+ref = v1
+EOF
+
+    capture_output ./targets/lib_d.bash
+    assert_exit_code 0
+    assert_stdout '^function A was called!
+function B was called!
+function C was called!$'
+}
+
 @test 'config - funny chars in remote ref - sanitizes' {
     use_target external_module print_env foobar
 
