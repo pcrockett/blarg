@@ -12,9 +12,9 @@
 - `tests/`: BATS test suite; each test uses `tests/util.sh` helpers (`use_target`, `use_lib`, `capture_output`)
 - `bin/`: CI helper scripts
 
-## blarg Runtime Context (for understanding tests/code)
+## Structure of a typical blarg project
 
-blarg is a target-based config tool. A typical blarg project lives in a git repo with:
+blarg is a target-based config tool. A typical blarg project exists in a git repository.
 - Targets under a `targets` directory as `.bash` files with shebang `#!/usr/bin/env blarg`
 - Most important functions in a target: `depends_on`, `satisfied_if`, `apply`
 - Shared code lives in `lib.d/` directory
