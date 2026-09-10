@@ -12,9 +12,10 @@
 - `tests/`: BATS test suite; each test uses `tests/util.sh` helpers (`use_target`, `use_lib`, `capture_output`)
 - `bin/`: CI helper scripts
 
-## Target Files
+## blarg Runtime Context (for understanding tests/code)
 
-- Targets are `.bash` files with shebang `#!/usr/bin/env blarg`
+Note: blarg is a target-based config tool. When working on this repo, you may see:
+- Targets as `.bash` files with shebang `#!/usr/bin/env blarg`
 - Required functions: `depends_on`, `satisfied_if`, `apply`
 - Shared code lives in `lib.d/` directory
 - External modules: reference as `@module:target` (requires `BLARG_MODULE_<name>` env var)
