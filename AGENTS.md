@@ -21,6 +21,10 @@ blarg is a target-based config tool. A typical blarg project exists in a git rep
 - External modules: reference as `@module:target` (requires entry in `blarg.conf`)
 - State cache lives in `.blarg/` (gitignored)
 
+## Process Model
+
+blarg relies heavily on Unix process trees. A single `blarg` invocation spawns a tree of processes: the Python `blarg` process execs `bash` to run a target, which may call `depends_on` to trigger another `blarg` process for each dependency. Child processes inherit environment variables from their parent, which blarg uses extensively for state management (e.g., `BLARG_RUNNING_TARGETS` for circular dependency detection, `BLARG_MODULE_DIR`, `BLARG_TARGETS_DIR`). This recursive, process-based approach ensures clean isolation between target executions while maintaining shared context via the environment.
+
 ## Toolchain
 
 - Tools managed via `mise.toml`; install with `mise install`
