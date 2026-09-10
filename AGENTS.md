@@ -14,11 +14,11 @@
 
 ## blarg Runtime Context (for understanding tests/code)
 
-Note: blarg is a target-based config tool. When working on this repo, you may see:
-- Targets as `.bash` files with shebang `#!/usr/bin/env blarg`
-- Required functions: `depends_on`, `satisfied_if`, `apply`
+blarg is a target-based config tool. A typical blarg project lives in a git repo with:
+- Targets under a `targets` directory as `.bash` files with shebang `#!/usr/bin/env blarg`
+- Most important functions in a target: `depends_on`, `satisfied_if`, `apply`
 - Shared code lives in `lib.d/` directory
-- External modules: reference as `@module:target` (requires `BLARG_MODULE_<name>` env var)
+- External modules: reference as `@module:target` (requires entry in `blarg.conf`)
 - State cache lives in `.blarg/` (gitignored)
 
 ## Toolchain
