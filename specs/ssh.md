@@ -194,18 +194,47 @@ docker compose -f tests/ssh/docker-compose.yml down
 
 ### Test Implementation Pattern
 
-Tests should use the existing `tests/util.sh` helpers (`capture_output`, `assert_*`) and follow the end-to-end style:
+Tests should use the existing `tests/util.sh` helpers (`capture_output`, `assert_*`) and follow the end-to-end style.
+
+To avoid host key verification prompts during tests, create an SSH config in `${TEST_HOME}/.ssh/config`:
+
+```bash
+mkdir -p "${TEST_HOME}/.ssh"
+cat > "${TEST_HOME}/.ssh/config" <<EOF
+Host test-ssh-server
+  HostName localhost
+  Port 2222
+  User testuser
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+EOF
+chmod 600 "${TEST_HOME}/.ssh/config"
+```
+
+Then use the SSH alias in tests:
 
 ```bats
 @test 'ssh - basic execution - success' {
-    setup_ssh_test_env
+    # Setup SSH config for test environment
+    mkdir -p "${TEST_HOME}/.ssh"
+    cat > "${TEST_HOME}/.ssh/config" <<EOF
+Host test-ssh-server
+  HostName localhost
+  Port 2222
+  User testuser
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+EOF
+    chmod 600 "${TEST_HOME}/.ssh/config"
+
     use_target simple_apply
-    capture_output blarg --ssh "${BLARG_SSH_TEST_USER}@${BLARG_SSH_TEST_HOST}:${BLARG_SSH_TEST_PORT}" targets/simple_apply.bash
+    capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
     assert_exit_code 0
     assert_stdout '^hi$'
-    teardown_ssh_test_env
 }
 ```
+
+This keeps host key bypass in test infrastructure (SSH config), not in blarg itself.
 
 ## Future Enhancements
 
