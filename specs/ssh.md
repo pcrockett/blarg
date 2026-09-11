@@ -23,6 +23,11 @@ blarg --ssh production my-target.bash
 
 # Keep remote temp directory for debugging
 blarg --ssh user@host my-target.bash --no-cleanup
+
+# Pass through flags to remote blarg
+blarg --ssh user@host my-target.bash --verbose
+blarg --ssh user@host my-target.bash --dry-run
+blarg --ssh user@host my-target.bash --verbose --dry-run
 ```
 
 ## Implementation
@@ -36,6 +41,15 @@ Add two new command-line arguments:
 
 These are mutually exclusive with `--dump-src`.
 
+#### Argument Forwarding
+
+All non-SSH-specific arguments should be forwarded to the remote blarg process:
+- `--verbose` / `-v`
+- `--dry-run` / `-r`
+- Any other existing or future flags that make sense in a remote context
+
+The `--ssh` and `--no-cleanup` flags are consumed locally and not passed to the remote.
+
 ### Execution Flow
 
 1. **Validation**: Ensure target path is within the current working directory
@@ -46,7 +60,8 @@ These are mutually exclusive with `--dump-src`.
    - SSH generates unique session IDs via `%C` token
 4. **Remote Execution**:
    - Extract tar archive to remote temp directory (`${TMPDIR:-/tmp}/blarg-$$`)
-   - Execute `python3 ./blarg <target>` in the extracted directory
+   - Build remote command: `python3 ./blarg <forwarded_args> <target>`
+   - Execute the remote command in the extracted directory
 5. **Cleanup**:
    - Remove remote temp directory via same SSH connection (no reconnect)
    - Remove local control socket
@@ -78,13 +93,21 @@ The tar archive excludes:
 ## Code Structure
 
 ```python
-def execute_via_ssh(ssh_target: str, working_dir: Path, script_path: Path, cleanup: bool = True) -> int:
+def execute_via_ssh(
+    ssh_target: str,
+    working_dir: Path,
+    script_path: Path,
+    cleanup: bool = True,
+    verbose: bool = False,
+    dry_run: bool = False,
+) -> int:
     # 1. Validate target is within working_dir
-    # 2. Build SSH command with ControlPath/ControlMaster/ControlPersist
-    # 3. Pipe tar to SSH
-    # 4. Execute remote command
-    # 5. Cleanup (remote temp dir + local socket)
-    # 6. Return exit code
+    # 2. Build forwarded args list from verbose, dry_run, etc.
+    # 3. Build SSH command with ControlPath/ControlMaster/ControlPersist
+    # 4. Pipe tar to SSH
+    # 5. Execute remote command with forwarded args
+    # 6. Cleanup (remote temp dir + local socket)
+    # 7. Return exit code
 ```
 
 ## Error Handling
@@ -108,6 +131,8 @@ The implementation should be tested with:
 4. Multiple concurrent blarg runs to different hosts
 5. Cleanup verification (remote temp dir removed)
 6. Error cases (missing ssh, missing tar, invalid target path)
+7. **Argument forwarding**: Verify `--verbose`, `--dry-run` work on remote
+8. **Argument combinations**: Test multiple flags forwarded together
 
 ## Future Enhancements
 
