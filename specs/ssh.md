@@ -203,9 +203,9 @@ To avoid host key verification prompts during tests, the SSH config should be se
 mkdir -p "${TEST_HOME}/.ssh"
 cat > "${TEST_HOME}/.ssh/config" <<EOF
 Host test-ssh-server
-  HostName localhost
-  Port 2222
-  User testuser
+  HostName ${BLARG_SSH_TEST_HOST}
+  Port ${BLARG_SSH_TEST_PORT}
+  User ${BLARG_SSH_TEST_USER}
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
 EOF
@@ -214,7 +214,7 @@ chmod 600 "${TEST_HOME}/.ssh/config"
 
 This runs for all tests (not just SSH tests), but shouldn't hurt anything. Then use the SSH alias in tests:
 
-```bats
+```bash
 @test 'ssh - basic execution - success' {
     use_target simple_apply
     capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
