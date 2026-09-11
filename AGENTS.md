@@ -36,3 +36,12 @@ blarg relies heavily on Unix process trees. A single `blarg` invocation spawns a
 - CI runs in Docker; `make ci` builds `blarg-ci:<version>` images for each Python version
 - `bin/python-version-test.sh` orchestrates multi-version testing
 - GitHub Actions workflow runs `make ci`
+
+## Tests
+
+Test naming convention is `<thing being tested> - <scenario> - <expected result>`. For
+example, `depends_on - external module doesnt exist - error`.
+
+Tests are end-to-end style, not unit tests. They don't adhere to many normal BATS
+tests you may have seen elsewhere, but instead rely heavily on the functions defined
+in `tests/util.sh`
