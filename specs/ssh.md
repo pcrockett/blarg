@@ -55,10 +55,12 @@ The `--ssh` flag is consumed locally and not passed to the remote.
 3. **Copy to Remote**: Use `scp -r` to copy the project directory to a temp directory on the remote machine
 4. **SSH Connection**:
    - Use `ControlPath`, `ControlMaster=yes`, and `ControlPersist=10` to enable connection sharing
+   - Use `-t` flag to allocate a pseudo-terminal, preserving interactivity for real-world use
    - Respect `$TMPDIR` on both local and remote systems
    - SSH generates unique session IDs via `%C` token
 5. **Remote Execution**:
    - Execute `python3 ./blarg <forwarded_args> <target>` in the remote temp directory
+   - The `-t` flag ensures prompts (sudo, etc.) work as they would locally
 6. **Cleanup**:
    - Always remove remote temp directory via same SSH connection (no reconnect)
    - Remove local control socket
