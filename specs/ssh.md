@@ -134,27 +134,6 @@ def execute_via_ssh(
 | SSH connection failure | Propagate SSH error |
 | Cleanup failure | Still return main command's exit code |
 
-## Implementation Plan
-
-### Phase 1: Test Infrastructure Setup
-
-1. Create `tests/ssh/compose.yml` with a test SSH server
-2. Add SSH config setup to `tests/util.sh`'s `setup()` function
-3. Write a simple connectivity test that:
-   - Starts the SSH container via docker compose
-   - Asserts we can connect non-interactively
-   - Asserts we can run a command that prints "hi"
-4. Commit: "Add SSH test infrastructure"
-
-### Phase 2: TDD Loop
-
-From this point forward, use Test-Driven Development:
-
-1. Write a failing test for the next piece of functionality
-2. Implement just enough in blarg to make it pass
-3. Commit when green
-4. Repeat
-
 ## Testing
 
 ### Docker Compose Test Infrastructure
@@ -232,13 +211,7 @@ chmod 600 "${TEST_HOME}/.ssh/config"
 
 This runs for all tests (not just SSH tests), but shouldn't hurt anything. Then use the SSH alias in tests:
 
-```bats
-@test 'ssh - connectivity - prints hi' {
-    capture_output ssh test-ssh-server echo hi
-    assert_exit_code 0
-    assert_stdout '^hi$'
-}
-
+```bash
 @test 'ssh - basic execution - success' {
     use_target simple_apply
     capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
@@ -248,6 +221,35 @@ This runs for all tests (not just SSH tests), but shouldn't hurt anything. Then 
 ```
 
 This keeps host key bypass in test infrastructure (SSH config), not in blarg itself.
+
+## Implementation Plan
+
+### Phase 1: Test Infrastructure Setup
+
+1. Create `compose.yml` with a test SSH server
+2. Add SSH config setup to `tests/util.sh`'s `setup()` function
+3. Start the ssh server with `docker compose up -d`
+4. Write a simple connectivity test that just proves the test infra is working:
+   ```bash
+   @test 'ssh - echo hi - prints hi' {
+       capture_output ssh test-ssh-server echo hi
+       assert_exit_code 0
+       assert_stdout '^hi$'
+       assert_no_stderr
+   }
+   ```
+5. Commit: "Add SSH test infrastructure"
+
+### Phase 2: TDD Loop
+
+Delete the connectivity test (it was only meant to be temporary).
+
+From this point forward, use Test-Driven Development:
+
+1. Write a failing test for the next piece of functionality
+2. Implement just enough in blarg to make it pass
+3. Commit when green
+4. Repeat
 
 ## Future Enhancements
 
