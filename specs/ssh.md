@@ -6,10 +6,6 @@ Add support for executing blarg targets on remote machines via SSH. The local bl
 
 **Important:** `rsync` is NOT an option and will not be used. The implementation uses only `scp` and `ssh`.
 
-## Design Philosophy
-
-The remote execution should behave identically to local execution. Interactivity must be preserved - if a target prompts for input locally, it should prompt for input when run remotely via SSH.
-
 ## Goals
 
 - Execute blarg targets on remote machines via SSH
@@ -56,15 +52,13 @@ The `--ssh` flag is consumed locally and not passed to the remote.
 
 1. **Validation**: Ensure target path is within the current working directory
 2. **External Module Resolution**: Resolve all external modules locally (from `blarg.conf`)
-3. **Copy to Remote**: Use `scp` to copy the project directory to a temp directory on the remote machine
+3. **Copy to Remote**: Use `scp -r` to copy the project directory to a temp directory on the remote machine
 4. **SSH Connection**:
    - Use `ControlPath`, `ControlMaster=yes`, and `ControlPersist=10` to enable connection sharing
-   - Use `-t` flag to allocate a pseudo-terminal, preserving interactivity
    - Respect `$TMPDIR` on both local and remote systems
    - SSH generates unique session IDs via `%C` token
 5. **Remote Execution**:
    - Execute `python3 ./blarg <forwarded_args> <target>` in the remote temp directory
-   - The `-t` flag ensures prompts (sudo, etc.) work as they would locally
 6. **Cleanup**:
    - Always remove remote temp directory via same SSH connection (no reconnect)
    - Remove local control socket
@@ -140,22 +134,80 @@ def execute_via_ssh(
 
 ## Testing
 
-The implementation should be tested with:
+### Docker Compose Test Infrastructure
 
-1. Basic SSH execution
-2. SSH aliases from `~/.ssh/config`
-3. Custom `$TMPDIR` on local and remote
-4. Multiple concurrent blarg runs to different hosts
-5. Cleanup verification (remote temp dir removed)
-6. Error cases (missing ssh, missing scp, invalid target path)
-7. **External modules**: Verify modules are resolved locally and included in copy
-8. **Argument forwarding**: Verify `--verbose`, `--dry-run` work on remote
-9. **Argument combinations**: Test multiple flags forwarded together
-10. **Interactivity**: Verify sudo prompts and other interactive commands work via `-t` flag
+A `docker-compose.yml` file provides a test SSH server for out-of-the-box testing:
+
+```yaml
+version: '3.8'
+services:
+  ssh-remote:
+    image: linuxserver/openssh-server
+    ports:
+      - "2222:22"
+    environment:
+      - PUBLIC_KEY=ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... # test key
+      - SUDO_ACCESS=true
+      - PASSWORD_ACCESS=true
+      - USER_NAME=testuser
+    volumes:
+      - ./tests/ssh/authorized_keys:/home/testuser/.ssh/authorized_keys:ro
+```
+
+### Test Naming Convention
+
+Following the project's test naming convention (`<thing> - <scenario> - <expected result>`):
+
+- `ssh - basic execution - success`
+- `ssh - with verbose flag - verbose output`
+- `ssh - with dry-run flag - no apply`
+- `ssh - external module - resolves locally`
+- `ssh - invalid target path - error`
+- `ssh - cleanup - removes temp dir`
+
+### Test Environment Variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `BLARG_SSH_TEST_HOST` | Test SSH host | `localhost` |
+| `BLARG_SSH_TEST_PORT` | Test SSH port | `2222` |
+| `BLARG_SSH_TEST_USER` | Test SSH user | `testuser` |
+
+### Out-of-the-Box Testing
+
+Tests should work without any setup:
+
+```bash
+# Start test server (handled automatically by tests)
+docker compose -f tests/ssh/docker-compose.yml up -d
+
+# Run SSH tests
+BLARG_SSH_TEST_HOST=localhost \
+  BLARG_SSH_TEST_PORT=2222 \
+  BLARG_SSH_TEST_USER=testuser \
+  bats tests/ssh_tests.bats
+
+# Cleanup
+docker compose -f tests/ssh/docker-compose.yml down
+```
+
+### Test Implementation Pattern
+
+Tests should use the existing `tests/util.sh` helpers (`capture_output`, `assert_*`) and follow the end-to-end style:
+
+```bats
+@test 'ssh - basic execution - success' {
+    setup_ssh_test_env
+    use_target simple_apply
+    capture_output blarg --ssh "${BLARG_SSH_TEST_USER}@${BLARG_SSH_TEST_HOST}:${BLARG_SSH_TEST_PORT}" targets/simple_apply.bash
+    assert_exit_code 0
+    assert_stdout '^hi$'
+    teardown_ssh_test_env
+}
+```
 
 ## Future Enhancements
 
 - Support for SSH port specification via `~/.ssh/config` (already works)
 - Support for SSH key authentication via `~/.ssh/config` (already works)
-- Streaming approach without temp directories (more complex)
 - Caching of blarg binary on remote to avoid re-transfer
