@@ -52,14 +52,14 @@ The `--ssh` flag is consumed locally and not passed to the remote.
 
 1. **Validation**: Ensure target path is within the current working directory
 2. **External Module Resolution**: Resolve all external modules locally (from `blarg.conf`)
-3. **Copy to Remote**: Use `scp -r` to copy the project directory to a temp directory on the remote machine
+3. **Copy to Remote**:
+   - Use `scp -r` with SSH Control options (`ControlPath`, `ControlMaster=yes`, `ControlPersist=10`) to copy the project directory to a temp directory on the remote machine
+   - Install the blarg script to `<temp_dir>/.blarg/bin/` on the remote
 4. **SSH Connection**:
-   - Use `ControlPath`, `ControlMaster=yes`, and `ControlPersist=10` to enable connection sharing
    - Use `-t` flag to allocate a pseudo-terminal, preserving interactivity for real-world use
    - Respect `$TMPDIR` on both local and remote systems
    - SSH generates unique session IDs via `%C` token
 5. **Remote Execution**:
-   - Install the blarg script to `<temp_dir>/.blarg/bin/` on the remote
    - Execute with temporary PATH: `PATH="<temp_dir>/.blarg/bin:${PATH}" blarg <forwarded_args> <target>`
    - The `-t` flag ensures prompts (sudo, etc.) work as they would locally
 6. **Cleanup**:
