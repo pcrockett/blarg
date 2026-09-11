@@ -2,7 +2,13 @@
 
 ## Overview
 
-Add support for executing blarg targets on remote machines via SSH. The local blarg project directory is packaged as a tar archive, streamed to the remote machine over SSH, and executed there.
+Add support for executing blarg targets on remote machines via SSH. The local blarg project directory is copied to the remote machine using `scp`, then executed there.
+
+**Important:** `rsync` is NOT an option and will not be used. The implementation uses only `scp` and `ssh`.
+
+## Design Philosophy
+
+The remote execution should behave identically to local execution. Interactivity must be preserved - if a target prompts for input locally, it should prompt for input when run remotely via SSH.
 
 ## Goals
 
@@ -49,16 +55,17 @@ The `--ssh` flag is consumed locally and not passed to the remote.
 ### Execution Flow
 
 1. **Validation**: Ensure target path is within the current working directory
-2. **Packaging**: Create a tar archive of the current directory, excluding `.git` and `.blarg`
-3. **SSH Connection**:
+2. **External Module Resolution**: Resolve all external modules locally (from `blarg.conf`)
+3. **Copy to Remote**: Use `scp` to copy the project directory to a temp directory on the remote machine
+4. **SSH Connection**:
    - Use `ControlPath`, `ControlMaster=yes`, and `ControlPersist=10` to enable connection sharing
+   - Use `-t` flag to allocate a pseudo-terminal, preserving interactivity
    - Respect `$TMPDIR` on both local and remote systems
    - SSH generates unique session IDs via `%C` token
-4. **Remote Execution**:
-   - Extract tar archive to remote temp directory (`${TMPDIR:-/tmp}/blarg-$$`)
-   - Build remote command: `python3 ./blarg <forwarded_args> <target>`
-   - Execute the remote command in the extracted directory
-5. **Cleanup**:
+5. **Remote Execution**:
+   - Execute `python3 ./blarg <forwarded_args> <target>` in the remote temp directory
+   - The `-t` flag ensures prompts (sudo, etc.) work as they would locally
+6. **Cleanup**:
    - Always remove remote temp directory via same SSH connection (no reconnect)
    - Remove local control socket
 
@@ -82,7 +89,7 @@ The `--ssh` flag is consumed locally and not passed to the remote.
 
 ### External Module Resolution
 
-Before creating the tar archive, all external modules referenced in `blarg.conf` must be resolved locally:
+Before copying, all external modules referenced in `blarg.conf` must be resolved locally:
 
 1. Parse `blarg.conf` for external modules
 2. For each module, ensure it exists in `.blarg/modules/<id>/<ref>/`
@@ -90,13 +97,13 @@ Before creating the tar archive, all external modules referenced in `blarg.conf`
 
 This ensures the remote machine doesn't need credentials or network access to external git repos.
 
-### Inclusions
+### File Copy
 
-The tar archive includes:
+The project directory is copied to the remote using `scp -r`:
 - All project files (targets, lib.d, blarg.conf, etc.)
 - `.blarg/modules/` - Pre-resolved external modules
 
-The tar archive excludes:
+Excludes:
 - `.git/` - Git repository metadata
 - `.blarg/.target-markers/` - Runtime state that shouldn't be reused
 
@@ -113,8 +120,8 @@ def execute_via_ssh(
     # 1. Validate target is within working_dir
     # 2. Resolve external modules (from blarg.conf)
     # 3. Build forwarded args list from verbose, dry_run, etc.
-    # 4. Build SSH command with ControlPath/ControlMaster/ControlPersist
-    # 5. Pipe tar to SSH (including .blarg/modules/)
+    # 4. Copy project to remote via scp -r
+    # 5. Build SSH command with ControlPath/ControlMaster/ControlPersist and -t
     # 6. Execute remote command with forwarded args
     # 7. Cleanup (remote temp dir + local socket)
     # 8. Return exit code
@@ -126,7 +133,7 @@ def execute_via_ssh(
 |-------|----------|
 | Target outside project directory | Print error, return 1 |
 | `ssh` not found | Print error, return 1 |
-| `tar` not found | Print error, return 1 |
+| `scp` not found | Print error, return 1 |
 | Remote `python3` not found | blarg fails with its own error |
 | SSH connection failure | Propagate SSH error |
 | Cleanup failure | Still return main command's exit code |
@@ -140,10 +147,11 @@ The implementation should be tested with:
 3. Custom `$TMPDIR` on local and remote
 4. Multiple concurrent blarg runs to different hosts
 5. Cleanup verification (remote temp dir removed)
-6. Error cases (missing ssh, missing tar, invalid target path)
-7. **External modules**: Verify modules are resolved locally and included in archive
+6. Error cases (missing ssh, missing scp, invalid target path)
+7. **External modules**: Verify modules are resolved locally and included in copy
 8. **Argument forwarding**: Verify `--verbose`, `--dry-run` work on remote
 9. **Argument combinations**: Test multiple flags forwarded together
+10. **Interactivity**: Verify sudo prompts and other interactive commands work via `-t` flag
 
 ## Future Enhancements
 
