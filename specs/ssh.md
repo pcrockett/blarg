@@ -55,6 +55,7 @@ The `--ssh` flag is consumed locally and not passed to the remote.
 3. **Copy to Remote**:
    - Use `scp -r` with SSH Control options (`ControlPath`, `ControlMaster=yes`, `ControlPersist=10`) to copy the project directory to a temp directory on the remote machine
    - Install the blarg script to `<temp_dir>/.blarg/bin/` on the remote
+   - Respect `$TMPDIR` on remote system
 4. **SSH Connection**:
    - Use `-t` flag to allocate a pseudo-terminal, preserving interactivity for real-world use
    - Respect `$TMPDIR` on both local and remote systems
