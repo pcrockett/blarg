@@ -141,7 +141,6 @@ def execute_via_ssh(
 A `docker-compose.yml` file provides a test SSH server for out-of-the-box testing:
 
 ```yaml
-version: '3.8'
 services:
   ssh-remote:
     image: linuxserver/openssh-server
