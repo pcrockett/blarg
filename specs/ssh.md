@@ -21,9 +21,6 @@ blarg --ssh user@host my-target.bash
 # With SSH alias from ~/.ssh/config
 blarg --ssh production my-target.bash
 
-# Keep remote temp directory for debugging
-blarg --ssh user@host my-target.bash --no-cleanup
-
 # Pass through flags to remote blarg
 blarg --ssh user@host my-target.bash --verbose
 blarg --ssh user@host my-target.bash --dry-run
@@ -34,10 +31,9 @@ blarg --ssh user@host my-target.bash --verbose --dry-run
 
 ### CLI Changes
 
-Add two new command-line arguments:
+Add one new command-line argument:
 
 - `--ssh SSH_TARGET`: Execute on remote machine via SSH
-- `--no-cleanup`: Keep remote temp directory after execution (for debugging)
 
 These are mutually exclusive with `--dump-src`.
 
@@ -48,7 +44,7 @@ All non-SSH-specific arguments should be forwarded to the remote blarg process:
 - `--dry-run` / `-r`
 - Any other existing or future flags that make sense in a remote context
 
-The `--ssh` and `--no-cleanup` flags are consumed locally and not passed to the remote.
+The `--ssh` flag is consumed locally and not passed to the remote.
 
 ### Execution Flow
 
@@ -63,7 +59,7 @@ The `--ssh` and `--no-cleanup` flags are consumed locally and not passed to the 
    - Build remote command: `python3 ./blarg <forwarded_args> <target>`
    - Execute the remote command in the extracted directory
 5. **Cleanup**:
-   - Remove remote temp directory via same SSH connection (no reconnect)
+   - Always remove remote temp directory via same SSH connection (no reconnect)
    - Remove local control socket
 
 ### SSH Options
@@ -84,11 +80,25 @@ The `--ssh` and `--no-cleanup` flags are consumed locally and not passed to the 
 - Uses `os.environ.get("TMPDIR", "/tmp") / "ssh-control"` on local system
 - Directory is created if it doesn't exist
 
-### Exclusions
+### External Module Resolution
+
+Before creating the tar archive, all external modules referenced in `blarg.conf` must be resolved locally:
+
+1. Parse `blarg.conf` for external modules
+2. For each module, ensure it exists in `.blarg/modules/<id>/<ref>/`
+3. If not present, clone it (same logic as current blarg module loading)
+
+This ensures the remote machine doesn't need credentials or network access to external git repos.
+
+### Inclusions
+
+The tar archive includes:
+- All project files (targets, lib.d, blarg.conf, etc.)
+- `.blarg/modules/` - Pre-resolved external modules
 
 The tar archive excludes:
 - `.git/` - Git repository metadata
-- `.blarg/` - blarg state/cache directory
+- `.blarg/.target-markers/` - Runtime state that shouldn't be reused
 
 ## Code Structure
 
@@ -97,17 +107,17 @@ def execute_via_ssh(
     ssh_target: str,
     working_dir: Path,
     script_path: Path,
-    cleanup: bool = True,
     verbose: bool = False,
     dry_run: bool = False,
 ) -> int:
     # 1. Validate target is within working_dir
-    # 2. Build forwarded args list from verbose, dry_run, etc.
-    # 3. Build SSH command with ControlPath/ControlMaster/ControlPersist
-    # 4. Pipe tar to SSH
-    # 5. Execute remote command with forwarded args
-    # 6. Cleanup (remote temp dir + local socket)
-    # 7. Return exit code
+    # 2. Resolve external modules (from blarg.conf)
+    # 3. Build forwarded args list from verbose, dry_run, etc.
+    # 4. Build SSH command with ControlPath/ControlMaster/ControlPersist
+    # 5. Pipe tar to SSH (including .blarg/modules/)
+    # 6. Execute remote command with forwarded args
+    # 7. Cleanup (remote temp dir + local socket)
+    # 8. Return exit code
 ```
 
 ## Error Handling
@@ -131,8 +141,9 @@ The implementation should be tested with:
 4. Multiple concurrent blarg runs to different hosts
 5. Cleanup verification (remote temp dir removed)
 6. Error cases (missing ssh, missing tar, invalid target path)
-7. **Argument forwarding**: Verify `--verbose`, `--dry-run` work on remote
-8. **Argument combinations**: Test multiple flags forwarded together
+7. **External modules**: Verify modules are resolved locally and included in archive
+8. **Argument forwarding**: Verify `--verbose`, `--dry-run` work on remote
+9. **Argument combinations**: Test multiple flags forwarded together
 
 ## Future Enhancements
 
