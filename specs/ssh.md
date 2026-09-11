@@ -58,13 +58,11 @@ The `--ssh` flag is consumed locally and not passed to the remote.
    - Use `-t` flag to allocate a pseudo-terminal, preserving interactivity for real-world use
    - Respect `$TMPDIR` on both local and remote systems
    - SSH generates unique session IDs via `%C` token
-5. **Remote Setup**:
+5. **Remote Execution**:
    - Install the blarg script to `<temp_dir>/.blarg/bin/` on the remote
-   - Add only `<temp_dir>/.blarg/bin` to `$PATH` so `blarg` is available
-6. **Remote Execution**:
-   - Execute `blarg <forwarded_args> <target>` in the remote temp directory
+   - Execute with temporary PATH: `PATH="<temp_dir>/.blarg/bin:${PATH}" blarg <forwarded_args> <target>`
    - The `-t` flag ensures prompts (sudo, etc.) work as they would locally
-7. **Cleanup**:
+6. **Cleanup**:
    - Always remove remote temp directory via same SSH connection (no reconnect)
    - Leave local control socket, no need to clean it up
 
