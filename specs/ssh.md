@@ -134,6 +134,27 @@ def execute_via_ssh(
 | SSH connection failure | Propagate SSH error |
 | Cleanup failure | Still return main command's exit code |
 
+## Implementation Plan
+
+### Phase 1: Test Infrastructure Setup
+
+1. Create `tests/ssh/compose.yml` with a test SSH server
+2. Add SSH config setup to `tests/util.sh`'s `setup()` function
+3. Write a simple connectivity test that:
+   - Starts the SSH container via docker compose
+   - Asserts we can connect non-interactively
+   - Asserts we can run a command that prints "hi"
+4. Commit: "Add SSH test infrastructure"
+
+### Phase 2: TDD Loop
+
+From this point forward, use Test-Driven Development:
+
+1. Write a failing test for the next piece of functionality
+2. Implement just enough in blarg to make it pass
+3. Commit when green
+4. Repeat
+
 ## Testing
 
 ### Docker Compose Test Infrastructure
@@ -180,16 +201,13 @@ Tests should work without any setup:
 
 ```bash
 # Start test server (handled automatically by tests)
-docker compose up -d
+docker compose -f tests/ssh/compose.yml up -d
 
 # Run SSH tests
-BLARG_SSH_TEST_HOST=localhost \
-  BLARG_SSH_TEST_PORT=2222 \
-  BLARG_SSH_TEST_USER=testuser \
-  bats tests/ssh_tests.bats
+bats tests/ssh_tests.bats
 
 # Cleanup
-docker compose down
+docker compose -f tests/ssh/compose.yml down
 ```
 
 ### Test Implementation Pattern
@@ -203,9 +221,9 @@ To avoid host key verification prompts during tests, the SSH config should be se
 mkdir -p "${TEST_HOME}/.ssh"
 cat > "${TEST_HOME}/.ssh/config" <<EOF
 Host test-ssh-server
-  HostName ${BLARG_SSH_TEST_HOST}
-  Port ${BLARG_SSH_TEST_PORT}
-  User ${BLARG_SSH_TEST_USER}
+  HostName localhost
+  Port 2222
+  User testuser
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
 EOF
@@ -214,7 +232,13 @@ chmod 600 "${TEST_HOME}/.ssh/config"
 
 This runs for all tests (not just SSH tests), but shouldn't hurt anything. Then use the SSH alias in tests:
 
-```bash
+```bats
+@test 'ssh - connectivity - prints hi' {
+    capture_output ssh test-ssh-server echo hi
+    assert_exit_code 0
+    assert_stdout '^hi$'
+}
+
 @test 'ssh - basic execution - success' {
     use_target simple_apply
     capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
