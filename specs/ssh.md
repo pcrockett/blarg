@@ -196,9 +196,10 @@ docker compose down
 
 Tests should use the existing `tests/util.sh` helpers (`capture_output`, `assert_*`) and follow the end-to-end style.
 
-To avoid host key verification prompts during tests, create an SSH config in `${TEST_HOME}/.ssh/config`:
+To avoid host key verification prompts during tests, the SSH config should be set up in `tests/util.sh`'s `setup()` function:
 
 ```bash
+# In tests/util.sh setup()
 mkdir -p "${TEST_HOME}/.ssh"
 cat > "${TEST_HOME}/.ssh/config" <<EOF
 Host test-ssh-server
@@ -211,22 +212,10 @@ EOF
 chmod 600 "${TEST_HOME}/.ssh/config"
 ```
 
-Then use the SSH alias in tests:
+This runs for all tests (not just SSH tests), but shouldn't hurt anything. Then use the SSH alias in tests:
 
 ```bats
 @test 'ssh - basic execution - success' {
-    # Setup SSH config for test environment
-    mkdir -p "${TEST_HOME}/.ssh"
-    cat > "${TEST_HOME}/.ssh/config" <<EOF
-Host test-ssh-server
-  HostName localhost
-  Port 2222
-  User testuser
-  StrictHostKeyChecking no
-  UserKnownHostsFile /dev/null
-EOF
-    chmod 600 "${TEST_HOME}/.ssh/config"
-
     use_target simple_apply
     capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
     assert_exit_code 0
