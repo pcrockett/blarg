@@ -63,7 +63,7 @@ The `--ssh` flag is consumed locally and not passed to the remote.
    - The `-t` flag ensures prompts (sudo, etc.) work as they would locally
 6. **Cleanup**:
    - Always remove remote temp directory via same SSH connection (no reconnect)
-   - Remove local control socket
+   - Leave local control socket, no need to clean it up
 
 ### SSH Options
 
@@ -119,7 +119,7 @@ def execute_via_ssh(
     # 4. Copy project to remote via scp -r
     # 5. Build SSH command with ControlPath/ControlMaster/ControlPersist and -t
     # 6. Execute remote command with forwarded args
-    # 7. Cleanup (remote temp dir + local socket)
+    # 7. Cleanup (remote temp dir)
     # 8. Return exit code
 ```
 
@@ -138,14 +138,14 @@ def execute_via_ssh(
 
 ### Docker Compose Test Infrastructure
 
-A `docker-compose.yml` file provides a test SSH server for out-of-the-box testing:
+A `compose.yml` file provides a test SSH server for out-of-the-box testing:
 
 ```yaml
 services:
   ssh-remote:
     image: linuxserver/openssh-server
     ports:
-      - "2222:22"
+      - "127.0.0.1:2222:22"
     environment:
       - PUBLIC_KEY=ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... # test key
       - SUDO_ACCESS=true
@@ -164,7 +164,7 @@ Following the project's test naming convention (`<thing> - <scenario> - <expecte
 - `ssh - with dry-run flag - no apply`
 - `ssh - external module - resolves locally`
 - `ssh - invalid target path - error`
-- `ssh - cleanup - removes temp dir`
+- `ssh - always - removes temp dir`
 
 ### Test Environment Variables
 
@@ -180,7 +180,7 @@ Tests should work without any setup:
 
 ```bash
 # Start test server (handled automatically by tests)
-docker compose -f tests/ssh/docker-compose.yml up -d
+docker compose up -d
 
 # Run SSH tests
 BLARG_SSH_TEST_HOST=localhost \
@@ -189,7 +189,7 @@ BLARG_SSH_TEST_HOST=localhost \
   bats tests/ssh_tests.bats
 
 # Cleanup
-docker compose -f tests/ssh/docker-compose.yml down
+docker compose down
 ```
 
 ### Test Implementation Pattern
