@@ -221,9 +221,9 @@ To avoid host key verification prompts during tests, the SSH config should be se
 mkdir -p "${TEST_HOME}/.ssh"
 cat > "${TEST_HOME}/.ssh/config" <<EOF
 Host test-ssh-server
-  HostName localhost
-  Port 2222
-  User testuser
+  HostName ${BLARG_SSH_TEST_HOST}
+  Port ${BLARG_SSH_TEST_PORT}
+  User ${BLARG_SSH_TEST_USER}
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
 EOF
