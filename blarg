@@ -387,7 +387,7 @@ def execute_via_ssh(
         try:
             config = parse_config(config_path)
             for module in config.modules:
-                # Handle file:// locations by copying the directory
+                # Handle file:// locations
                 if module.location.startswith("file://"):
                     source_path = Path(module.location[7:])  # Remove file:// prefix
                     if source_path.exists():
@@ -403,11 +403,38 @@ def execute_via_ssh(
                                 sanitized_ref_chars.append("_")
                         ref_dir_name = "".join(sanitized_ref_chars)
                         module_dir = working_dir / ".blarg" / "modules" / module.id / ref_dir_name
-                        module_dir.mkdir(parents=True, exist_ok=True)
-                        # Copy the source directory to the module directory
-                        if source_path.exists():
-                            shutil.copytree(source_path, module_dir, dirs_exist_ok=True)
+
+                        if not (module_dir / ".git").exists():
+                            module_dir.mkdir(parents=True, exist_ok=True)
+                            # For .git directories, use git clone
+                            if source_path.name == ".git":
+                                source_dir = re.sub("^file://~", Path.home().as_uri(), module.location)
+                                try:
+                                    subprocess.run(
+                                        [
+                                            "git",
+                                            "clone",
+                                            "--depth",
+                                            "1",
+                                            "--branch",
+                                            module.ref,
+                                            source_dir,
+                                            module_dir,
+                                        ],
+                                        check=True,
+                                        env=env,
+                                    )
+                                except subprocess.CalledProcessError:
+                                    # Clean up module_dir if clone failed
+                                    shutil.rmtree(module_dir, ignore_errors=True)
+                                    raise
+                            else:
+                                # For non-.git directories, copy the directory
+                                shutil.copytree(source_path, module_dir, dirs_exist_ok=True)
                         env[f"BLARG_MODULE_{module.id}"] = str(module_dir)
+                    else:
+                        print(f"FATAL: External module source {source_path} does not exist", file=sys.stderr)
+                        return 1
                 else:
                     module.init(working_dir)
         except Exception as e:
