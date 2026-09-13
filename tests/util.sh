@@ -5,11 +5,12 @@ setup() {
     TEST_CWD="$(mktemp --directory --tmpdir=/tmp blarg-test.XXXXXX)"
     TEST_HOME="$(mktemp --directory --tmpdir=/tmp blarg-home.XXXXXX)"
     REPO_HOME="$(pwd)"
-    mkdir -p "${TEST_HOME}/.local/bin"
-    cp blarg "${TEST_HOME}/.local/bin"
+    TEST_BIN="${TEST_HOME}/.local/bin"
+    mkdir -p "${TEST_BIN}"
+    cp blarg "${TEST_BIN}"
 
     cd "${TEST_CWD}"
-    export PATH="${TEST_HOME}/.local/bin:${PATH}"
+    export PATH="${TEST_BIN}:${PATH}"
     export HOME="${TEST_HOME}"
 
     mkdir -p "${TEST_HOME}/.ssh"
@@ -20,22 +21,15 @@ Host test-ssh-server
   User ${BLARG_SSH_TEST_USER:-testuser}
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
-  IdentityFile ${TEST_HOME}/.ssh/id_rsa
+  IdentityFile ${TEST_HOME}/.ssh/id_ed25519
   LogLevel ERROR
 EOF
     chmod 600 "${TEST_HOME}/.ssh/config"
-    cp "${REPO_HOME}/tests/ssh/test_key" "${TEST_HOME}/.ssh/id_rsa"
-    chmod 600 "${TEST_HOME}/.ssh/id_rsa"
+    cp "${REPO_HOME}/tests/ssh/test_key" "${TEST_HOME}/.ssh/id_ed25519"
+    chmod 600 "${TEST_HOME}/.ssh/id_ed25519"
 
-    # Create SSH wrapper script that uses the test config
-    # shellcheck disable=SC2016
-    printf '#!/bin/bash\n/usr/bin/ssh -F "${HOME}/.ssh/config" -o LogLevel=ERROR "$@" 2>/dev/null\n' >"${TEST_HOME}/.local/bin/ssh"
-    chmod +x "${TEST_HOME}/.local/bin/ssh"
-
-    # Create SCP wrapper script as well
-    # shellcheck disable=SC2016
-    printf '#!/bin/bash\n/usr/bin/scp -F "${HOME}/.ssh/config" -o LogLevel=ERROR "$@" 2>/dev/null\n' >"${TEST_HOME}/.local/bin/scp"
-    chmod +x "${TEST_HOME}/.local/bin/scp"
+    cp "${REPO_HOME}/tests/ssh/ssh_wrapper.bash" "${TEST_BIN}/ssh"
+    cp "${REPO_HOME}/tests/ssh/scp_wrapper.bash" "${TEST_BIN}/scp"
 }
 
 teardown() {
