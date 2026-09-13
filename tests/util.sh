@@ -11,6 +11,24 @@ setup() {
     cd "${TEST_CWD}"
     PATH="${TEST_HOME}/.local/bin:${PATH}"
     export HOME="${TEST_HOME}"
+
+    printf '#!/bin/bash\n/usr/bin/ssh -F "%s" "$@"\n' "${TEST_HOME}/.ssh/config" >"${TEST_HOME}/.local/bin/ssh"
+    chmod +x "${TEST_HOME}/.local/bin/ssh"
+
+    mkdir -p "${TEST_HOME}/.ssh"
+    cat >"${TEST_HOME}/.ssh/config" <<EOF
+Host test-ssh-server
+  HostName ${BLARG_SSH_TEST_HOST:-localhost}
+  Port ${BLARG_SSH_TEST_PORT:-2222}
+  User ${BLARG_SSH_TEST_USER:-testuser}
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  IdentityFile ${TEST_HOME}/.ssh/id_rsa
+  LogLevel ERROR
+EOF
+    chmod 600 "${TEST_HOME}/.ssh/config"
+    cp "${REPO_HOME}/tests/ssh/test_key" "${TEST_HOME}/.ssh/id_rsa"
+    chmod 600 "${TEST_HOME}/.ssh/id_rsa"
 }
 
 teardown() {
