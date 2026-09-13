@@ -1,8 +1,10 @@
-FROM alpine:3.20
+# hadolint ignore=DL3007,DL4006
+FROM alpine:latest
 
 SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
-RUN apk add --no-cache openssh-server=10.3_p1-r1 openssh-client=10.3_p1-r1 sudo=1.9.17_p2-r1
+# hadolint ignore=DL3018
+RUN apk add --no-cache openssh-server openssh-client sudo
 
 # Create testuser
 RUN adduser -D -s /bin/ash testuser && \
