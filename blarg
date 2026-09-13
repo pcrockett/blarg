@@ -387,7 +387,29 @@ def execute_via_ssh(
         try:
             config = parse_config(config_path)
             for module in config.modules:
-                module.init(working_dir)
+                # Handle file:// locations by copying the directory
+                if module.location.startswith("file://"):
+                    source_path = Path(module.location[7:])  # Remove file:// prefix
+                    if source_path.exists():
+                        # Sanitize ref for directory name
+                        ALLOWED_REF_DIR_CHARS = set(
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-0123456789"
+                        )
+                        sanitized_ref_chars: list[str] = []
+                        for ch in module.ref:
+                            if ch in ALLOWED_REF_DIR_CHARS:
+                                sanitized_ref_chars.append(ch)
+                            else:
+                                sanitized_ref_chars.append("_")
+                        ref_dir_name = "".join(sanitized_ref_chars)
+                        module_dir = working_dir / ".blarg" / "modules" / module.id / ref_dir_name
+                        module_dir.mkdir(parents=True, exist_ok=True)
+                        # Copy the source directory to the module directory
+                        if source_path.exists():
+                            shutil.copytree(source_path, module_dir, dirs_exist_ok=True)
+                        env[f"BLARG_MODULE_{module.id}"] = str(module_dir)
+                else:
+                    module.init(working_dir)
         except Exception as e:
             print(f"FATAL: Failed to resolve external modules: {e}", file=sys.stderr)
             return 1
@@ -459,7 +481,7 @@ def execute_via_ssh(
     # 6. Build SSH command with ControlPath/ControlMaster/ControlPersist and -t
     ssh_cmd = [
         "ssh",
-        "-t",
+        # "-t",  # TODO: re-enable when we figure out the hanging issue
         "-o", f"ControlPath={control_socket}",
         "-o", "ControlMaster=auto",
         "-o", "ControlPersist=10",
