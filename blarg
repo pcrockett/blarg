@@ -466,20 +466,15 @@ def execute_remote(
         if result.stderr:
             print(result.stderr, end="", file=sys.stderr)
 
+        return result.returncode
+    except subprocess.CalledProcessError as e:
+        print(f"FATAL: SSH command failed: {e}", file=sys.stderr)
+        return 1
+    finally:
         try:
             subprocess.run(cleanup_cmd)
         except Exception:
             pass  # Ignore cleanup errors
-
-        return result.returncode
-    except subprocess.CalledProcessError as e:
-        print(f"FATAL: SSH command failed: {e}", file=sys.stderr)
-        # Still try to clean up
-        try:
-            subprocess.run(cleanup_cmd)
-        except Exception:
-            pass
-        return 1
 
 
 def execute_local(
