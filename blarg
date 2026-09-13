@@ -411,7 +411,7 @@ def execute_remote(
         return 1
 
     # Copy project to remote via scp
-    scp_cmd = ["scp", "-r"] + ssh_options + [
+    scp_cmd = ["scp", "-r", "-p"] + ssh_options + [
         str(working_dir),
         f"{ssh_target}:{remote_temp_dir}/",
     ]
@@ -435,7 +435,7 @@ def execute_remote(
         return 1
 
     # Copy blarg script to remote
-    scp_blarg_cmd = ["scp"] + ssh_options + [
+    scp_blarg_cmd = ["scp", "-p"] + ssh_options + [
         str(blarg_script),
         f"{ssh_target}:{remote_blarg_dir}/blarg",
     ]
@@ -443,14 +443,6 @@ def execute_remote(
         subprocess.run(scp_blarg_cmd, check=True)
     except subprocess.CalledProcessError as e:
         print(f"FATAL: Failed to copy blarg script: {e}", file=sys.stderr)
-        return 1
-
-    # Make blarg executable on remote
-    chmod_blarg_cmd = ssh_cmd + [f"chmod +x {remote_blarg_dir}/blarg"]
-    try:
-        subprocess.run(chmod_blarg_cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"FATAL: Failed to chmod blarg: {e}", file=sys.stderr)
         return 1
 
     # Execute remote command with forwarded args
