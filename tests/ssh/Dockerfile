@@ -4,7 +4,7 @@ FROM alpine:latest
 SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 # hadolint ignore=DL3018
-RUN apk add --no-cache openssh-server openssh-client sudo
+RUN apk add --no-cache openssh-server openssh-client sudo python3 bash
 
 # Create testuser
 RUN adduser -D -s /bin/ash testuser && \

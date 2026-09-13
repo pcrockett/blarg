@@ -9,11 +9,8 @@ setup() {
     cp blarg "${TEST_HOME}/.local/bin"
 
     cd "${TEST_CWD}"
-    PATH="${TEST_HOME}/.local/bin:${PATH}"
+    export PATH="${TEST_HOME}/.local/bin:${PATH}"
     export HOME="${TEST_HOME}"
-
-    printf '#!/bin/bash\n/usr/bin/ssh -F "%s" "$@"\n' "${TEST_HOME}/.ssh/config" >"${TEST_HOME}/.local/bin/ssh"
-    chmod +x "${TEST_HOME}/.local/bin/ssh"
 
     mkdir -p "${TEST_HOME}/.ssh"
     cat >"${TEST_HOME}/.ssh/config" <<EOF
@@ -29,6 +26,16 @@ EOF
     chmod 600 "${TEST_HOME}/.ssh/config"
     cp "${REPO_HOME}/tests/ssh/test_key" "${TEST_HOME}/.ssh/id_rsa"
     chmod 600 "${TEST_HOME}/.ssh/id_rsa"
+
+    # Create SSH wrapper script that uses the test config
+    # shellcheck disable=SC2016
+    printf '#!/bin/bash\n/usr/bin/ssh -F "${HOME}/.ssh/config" -o LogLevel=ERROR "$@" 2>/dev/null\n' >"${TEST_HOME}/.local/bin/ssh"
+    chmod +x "${TEST_HOME}/.local/bin/ssh"
+
+    # Create SCP wrapper script as well
+    # shellcheck disable=SC2016
+    printf '#!/bin/bash\n/usr/bin/scp -F "${HOME}/.ssh/config" -o LogLevel=ERROR "$@" 2>/dev/null\n' >"${TEST_HOME}/.local/bin/scp"
+    chmod +x "${TEST_HOME}/.local/bin/scp"
 }
 
 teardown() {
