@@ -7,7 +7,6 @@ import re
 import shutil
 import subprocess
 import sys
-import threading
 
 
 from configparser import ConfigParser
@@ -469,7 +468,7 @@ def execute_remote(
         print(f"FATAL: Failed to stream project to remote: {e}", file=sys.stderr)
         return 1
 
-    ssh_cmd = ["ssh", "-t"] + ssh_options + [ssh_target]
+    ssh_cmd = ["ssh"] + ssh_options + [ssh_target]
 
     # Execute remote command with forwarded args
     remote_working_dir = remote_temp_dir
@@ -478,17 +477,8 @@ def execute_remote(
     cleanup_cmd = ssh_cmd + [f"rm -rf {remote_temp_dir}"]
 
     try:
-        process = subprocess.Popen(full_ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-        def forward(stream, output):
-            for line in stream:
-                output.write(line)
-            stream.close()
-
-        threading.Thread(target=forward, args=(process.stdout, sys.stdout), daemon=True).start()
-        threading.Thread(target=forward, args=(process.stderr, sys.stderr), daemon=True).start()
+        process = subprocess.Popen(full_ssh_cmd)
         process.wait()
-
         return process.returncode
     except subprocess.CalledProcessError as e:
         print(f"FATAL: SSH command failed: {e}", file=sys.stderr)

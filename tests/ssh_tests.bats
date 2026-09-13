@@ -14,9 +14,9 @@ source tests/util.sh
     use_target simple_apply
     capture_output blarg --ssh test-ssh-server --verbose targets/simple_apply.bash
     assert_exit_code 0
-    assert_stdout 'running'
-    assert_stdout 'hi'
-    assert_stdout 'done'
+    assert_stdout '^--> simple_apply \[running\.\.\.\]
+hi
+--> simple_apply \[done\]$'
     assert_no_stderr
 }
 
@@ -24,7 +24,7 @@ source tests/util.sh
     use_target simple_apply
     capture_output blarg --ssh test-ssh-server --dry-run targets/simple_apply.bash
     assert_exit_code 1
-    assert_stdout 'dry-run: would apply simple_apply'
+    assert_stdout '^dry-run: would apply simple_apply$'
     assert_no_stderr
 }
 
@@ -88,7 +88,7 @@ EOF
     capture_output blarg --ssh test-ssh-server targets/use_external.bash
 
     assert_stderr 'Cloning into'
-    assert_stdout 'external target output'
-    assert_stdout 'main target done'
+    assert_stdout '^external target output
+main target done$'
     assert_exit_code 0
 }
