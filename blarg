@@ -4,18 +4,20 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+
 
 from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import rmtree
 from tempfile import TemporaryDirectory
-from typing import List, Optional
+from typing import List, MutableMapping, Optional
 
 
-VERSION = "0.6.1"
+VERSION = "0.7.0"
 
 
 STDLIB = """
@@ -353,16 +355,14 @@ def parse_config(config_path: Path) -> BlargConfig:
     return BlargConfig(modules)
 
 
-def execute_via_ssh(
+def execute_remote(
     ssh_target: str,
     working_dir: Path,
     script_path: Path,
-    verbose: bool = False,
-    dry_run: bool = False,
+    env: MutableMapping[str, str],
+    verbose: bool,
+    dry_run: bool,
 ) -> int:
-    import shutil
-    import subprocess
-
     resolved_script_path = script_path.resolve()
     resolved_working_dir = working_dir.resolve()
     if not str(resolved_script_path).startswith(str(resolved_working_dir)):
@@ -379,7 +379,7 @@ def execute_via_ssh(
         forwarded_args.append("--dry-run")
     forwarded_args.append(str(script_path))
 
-    local_control_dir = Path(os.environ.get("TMPDIR", "/tmp")) / "blarg-ssh"
+    local_control_dir = Path(env.get("TMPDIR", "/tmp")) / "blarg-ssh"
     local_control_dir.mkdir(parents=True, exist_ok=True)
 
     control_socket = local_control_dir / f"%C-{ssh_target}"
@@ -507,62 +507,22 @@ def execute_via_ssh(
         return 1
 
 
-def main() -> int:
-    args = parse_args()
-
-    if args.version:
-        print(f"blarg version {VERSION}")
-        return 0
-
-    if args.ssh and args.dump_src:
-        print("FATAL: --ssh and --dump-src are mutually exclusive", file=sys.stderr)
-        return 1
-
-    if not args.script_path:
-        CliParser().print_help()
-        return 0
-
-    script_path = args.script_path
-    if script_path.is_dir():
-        script_path = script_path / "main.bash"
-
-    env = os.environ
-    working_dir = Path(os.getcwd())
-
-    if not env.get("BLARG_CWD"):
-        env["BLARG_CWD"] = str(working_dir)
-
-    module_dir_str = env.get("BLARG_MODULE_DIR")
-    if module_dir_str is None:  # TODO: document difference between module dir and CWD
-        module_dir = working_dir
-        env["BLARG_MODULE_DIR"] = str(module_dir)
-    else:
-        module_dir = Path(module_dir_str)
-
-    if args.dump_src:
-        print(generate_script(module_dir, script_path))
-        return 0
-
-    config = parse_config(module_dir / "blarg.conf")
-    for module in config.modules:
-        external_module_dir = module.init(working_dir)
-        env[f"BLARG_MODULE_{module.id}"] = str(external_module_dir)
-
-    if args.ssh:
-        return execute_via_ssh(
-            args.ssh,
-            working_dir,
-            script_path,
-            args.verbose,
-            args.dry_run,
-        )
-
+def execute_local(
+        working_dir: Path,
+        module_dir: Path,
+        script_path: Path,
+        env: MutableMapping[str, str],
+        verbose: bool,
+        dry_run: bool
+    ):
     resolved_path = script_path.resolve()
     env["BLARG_TARGET_PATH"] = str(resolved_path)
 
-    is_verbose = args.verbose or "BLARG_VERBOSE" in env
-    if is_verbose:
-        env["BLARG_VERBOSE"] = str(is_verbose)
+    if verbose:
+        env["BLARG_VERBOSE"] = str(verbose)
+
+    if not env.get("BLARG_CWD"):
+        env["BLARG_CWD"] = str(working_dir)
 
     targets_dir = env.get("BLARG_TARGETS_DIR")
     if targets_dir:
@@ -571,7 +531,7 @@ def main() -> int:
         targets_dir = str(Path.cwd() / "targets")
         env["BLARG_TARGETS_DIR"] = targets_dir
 
-    dry_run = args.dry_run or "BLARG_DRY_RUN" in env
+    dry_run = dry_run or "BLARG_DRY_RUN" in env
     if dry_run:
         env["BLARG_DRY_RUN"] = str(dry_run)
 
@@ -634,6 +594,65 @@ def main() -> int:
 
     return result.returncode
 
+
+def main() -> int:
+    args = parse_args()
+
+    if args.version:
+        print(f"blarg version {VERSION}")
+        return 0
+
+    if args.ssh and args.dump_src:
+        print("FATAL: --ssh and --dump-src are mutually exclusive", file=sys.stderr)
+        return 1
+
+    if not args.script_path:
+        CliParser().print_help()
+        return 0
+
+    script_path = args.script_path
+    if script_path.is_dir():
+        script_path = script_path / "main.bash"
+
+    env = os.environ
+    working_dir = Path(os.getcwd())
+
+    module_dir_str = env.get("BLARG_MODULE_DIR")
+    if module_dir_str is None:  # TODO: document difference between module dir and CWD
+        module_dir = working_dir
+        env["BLARG_MODULE_DIR"] = str(module_dir)
+    else:
+        module_dir = Path(module_dir_str)
+
+    if args.dump_src:
+        print(generate_script(module_dir, script_path))
+        return 0
+
+    config = parse_config(module_dir / "blarg.conf")
+    for module in config.modules:
+        external_module_dir = module.init(working_dir)
+        env[f"BLARG_MODULE_{module.id}"] = str(external_module_dir)
+
+    is_verbose = args.verbose or "BLARG_VERBOSE" in env
+
+    if args.ssh:
+        return execute_remote(
+            args.ssh,
+            working_dir,
+            script_path,
+            env,
+            is_verbose,
+            args.dry_run,
+        )
+    else:
+        return execute_local(
+            working_dir,
+            module_dir,
+            script_path,
+            env,
+            is_verbose,
+            args.dry_run,
+        )
 
 if __name__ == "__main__":
     exit_code = main()
