@@ -372,6 +372,14 @@ def execute_remote(
         )
         return 1
 
+    if shutil.which("ssh") is None:
+        print("FATAL: ssh not found", file=sys.stderr)
+        return 1
+
+    if shutil.which("scp") is None:
+        print("FATAL: scp not found", file=sys.stderr)
+        return 1
+
     forwarded_args = []
     if verbose:
         forwarded_args.append("--verbose")
@@ -383,28 +391,18 @@ def execute_remote(
     local_control_dir.mkdir(parents=True, exist_ok=True)
 
     control_socket = local_control_dir / f"%C-{ssh_target}"
-    ssh_cmd_base = [
-        "ssh",
+
+    ssh_options = [
         "-o", f"ControlPath={control_socket}",
         "-o", "ControlMaster=auto",
         "-o", "ControlPersist=10",
-        ssh_target,
     ]
 
-    # Check if ssh is available
-    if shutil.which("ssh") is None:
-        print("FATAL: ssh not found", file=sys.stderr)
-        return 1
-
-    # Check if scp is available
-    if shutil.which("scp") is None:
-        print("FATAL: scp not found", file=sys.stderr)
-        return 1
-
-    # 5. Create remote temp directory
-    # Use SSH to create the temp directory on the remote
     remote_temp_dir_cmd = "mktemp -d ${TMPDIR:-/tmp}/blarg-XXXXXX"
-    create_temp_cmd = ssh_cmd_base + [remote_temp_dir_cmd]
+    create_temp_cmd = ["ssh"] + ssh_options + [
+        ssh_target,
+        remote_temp_dir_cmd
+    ]
     try:
         result = subprocess.run(create_temp_cmd, capture_output=True, text=True, check=True)
         remote_temp_dir = result.stdout.strip()
@@ -412,36 +410,19 @@ def execute_remote(
         print(f"FATAL: Failed to create remote temp dir: {e}", file=sys.stderr)
         return 1
 
-    # 6. Copy project to remote via scp
-    scp_cmd = [
-        "scp",
-        "-r",
-        "-o", f"ControlPath={control_socket}",
-        "-o", "ControlMaster=auto",
-        "-o", "ControlPersist=10",
+    # Copy project to remote via scp
+    scp_cmd = ["scp", "-r"] + ssh_options + [
         str(working_dir),
         f"{ssh_target}:{remote_temp_dir}/",
     ]
 
-    # Run scp
     try:
         subprocess.run(scp_cmd, check=True)
     except subprocess.CalledProcessError as e:
         print(f"FATAL: scp failed: {e}", file=sys.stderr)
         return 1
-    except FileNotFoundError:
-        print("FATAL: scp not found", file=sys.stderr)
-        return 1
 
-    # 6. Build SSH command with ControlPath/ControlMaster/ControlPersist and -t
-    ssh_cmd = [
-        "ssh",
-        "-t",
-        "-o", f"ControlPath={control_socket}",
-        "-o", "ControlMaster=auto",
-        "-o", "ControlPersist=10",
-        ssh_target,
-    ]
+    ssh_cmd = ["ssh", "-t"] + ssh_options + [ssh_target]
 
     # Install blarg script to remote temp dir
     blarg_script = Path(__file__).resolve()
@@ -454,11 +435,7 @@ def execute_remote(
         return 1
 
     # Copy blarg script to remote
-    scp_blarg_cmd = [
-        "scp",
-        "-o", f"ControlPath={control_socket}",
-        "-o", "ControlMaster=auto",
-        "-o", "ControlPersist=10",
+    scp_blarg_cmd = ["scp"] + ssh_options + [
         str(blarg_script),
         f"{ssh_target}:{remote_blarg_dir}/blarg",
     ]
@@ -476,12 +453,10 @@ def execute_remote(
         print(f"FATAL: Failed to chmod blarg: {e}", file=sys.stderr)
         return 1
 
-    # 7. Execute remote command with forwarded args
+    # Execute remote command with forwarded args
     remote_working_dir = f"{remote_temp_dir}/{os.path.basename(working_dir)}"
     remote_cmd = f"PATH={remote_blarg_dir}:${{PATH}} blarg {' '.join(forwarded_args)}"
     full_ssh_cmd = ssh_cmd + [f"cd {remote_working_dir} && {remote_cmd}"]
-
-    # 8. Cleanup: remove remote temp directory
     cleanup_cmd = ssh_cmd + [f"rm -rf {remote_temp_dir}"]
 
     try:
