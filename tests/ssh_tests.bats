@@ -5,9 +5,9 @@ source tests/util.sh
 @test 'ssh - basic execution - success' {
     use_target simple_apply
     capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
-    assert_exit_code 0
-    assert_stdout '^hi$'
     assert_no_stderr
+    assert_stdout '^hi$'
+    assert_exit_code 0
 }
 
 @test 'ssh - with verbose flag - verbose output' {
@@ -29,28 +29,53 @@ source tests/util.sh
 }
 
 @test 'ssh - invalid target path - error' {
-    capture_output blarg --ssh test-ssh-server /etc/passwd
+    capture_output blarg --ssh test-ssh-server /etc/hosts
     assert_exit_code 1
     assert_stderr 'outside the project directory'
+    assert_no_stdout
 }
 
 @test 'ssh - always - removes temp dir' {
-    use_target simple_apply
-    capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
-    assert_exit_code 0
-    assert_stdout '^hi$'
+    use_target pwd
+    working_dir="$(blarg --ssh test-ssh-server targets/pwd.bash)"
+    capture_output ssh test-ssh-server test -d "${working_dir}"
+    assert_no_stdout
     assert_no_stderr
-    # Verify that the remote temp dir was cleaned up
-    # This is hard to test directly, but we can at least verify the command succeeded
+    assert_exit_code 1
 }
 
 @test 'ssh - external module - resolves locally' {
     use_target simple_apply
 
+    # Create a simple target that uses an external module
+    cat >targets/use_external.bash <<'EOF'
+#!/usr/bin/env blarg
+
+depends_on @some_module:external_target
+
+apply() {
+    echo "main target done"
+}
+EOF
+    chmod +x targets/*.bash
+
+    # important: the external module is in TEST_HOME, not TEST_CWD. this ensures the
+    # module source
+    #
+    # - remains on the local machine
+    # - is never accessible by the remote machine.
+    # - is cloned locally and transferred to the remote machine via the .blarg directory
+    #
     module_path="${TEST_HOME}/some_module"
     init_git_repo "${module_path}"
     mkdir "${module_path}/targets"
-    cp "${TEST_CWD}/targets/simple_apply.bash" "${module_path}/targets"
+    cat >"${module_path}/targets/external_target.bash" <<'EOF'
+#!/usr/bin/env blarg
+apply() {
+    echo "external target output"
+}
+EOF
+    chmod +x "${module_path}/targets/"*.bash
     git -C "${module_path}" add .
     git -C "${module_path}" commit -m "initial commit"
     git -C "${module_path}" tag v1
@@ -60,9 +85,10 @@ source tests/util.sh
 location = file://${module_path}/.git
 ref = v1
 EOF
-    capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
+    capture_output blarg --ssh test-ssh-server targets/use_external.bash
 
-    assert_exit_code 0
-    assert_stdout '^hi$'
     assert_stderr 'Cloning into'
+    assert_stdout 'external target output'
+    assert_stdout 'main target done'
+    assert_exit_code 0
 }
