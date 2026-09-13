@@ -508,7 +508,7 @@ def execute_via_ssh(
     # 6. Build SSH command with ControlPath/ControlMaster/ControlPersist and -t
     ssh_cmd = [
         "ssh",
-        # "-t",  # TODO: re-enable when we figure out the hanging issue
+        "-t",
         "-o", f"ControlPath={control_socket}",
         "-o", "ControlMaster=auto",
         "-o", "ControlPersist=10",
