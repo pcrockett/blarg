@@ -29,7 +29,6 @@ EOF
     chmod 600 "${TEST_HOME}/.ssh/id_ed25519"
 
     cp "${REPO_HOME}/tests/ssh/ssh_wrapper.bash" "${TEST_BIN}/ssh"
-    cp "${REPO_HOME}/tests/ssh/scp_wrapper.bash" "${TEST_BIN}/scp"
 }
 
 teardown() {

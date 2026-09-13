@@ -70,7 +70,7 @@ dependencies (which are found on almost every Linux distribution out-of-the-box)
 ...and three optional dependencies:
 
 - Git (if you use the [external modules feature](https://github.com/pcrockett/blarg-targets))
-- SSH and SCP (if you want to run your targets on a remote machine)
+- SSH and tar (if you want to run your targets on a remote machine)
 
 `blarg` has three design goals:
 

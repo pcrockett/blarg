@@ -376,8 +376,8 @@ def execute_remote(
         print("FATAL: ssh not found", file=sys.stderr)
         return 1
 
-    if shutil.which("scp") is None:
-        print("FATAL: scp not found", file=sys.stderr)
+    if shutil.which("tar") is None:
+        print("FATAL: tar not found", file=sys.stderr)
         return 1
 
     forwarded_args = []
@@ -410,44 +410,69 @@ def execute_remote(
         print(f"FATAL: Failed to create remote temp dir: {e}", file=sys.stderr)
         return 1
 
-    # Copy project to remote via scp
-    scp_cmd = ["scp", "-r", "-p"] + ssh_options + [
-        str(working_dir),
-        f"{ssh_target}:{remote_temp_dir}/",
-    ]
+    # Copy blarg script to local .blarg/bin for inclusion in tar
+    local_blarg_bin = working_dir / ".blarg" / "bin"
+    local_blarg_bin.mkdir(parents=True, exist_ok=True)
+    local_blarg_path = local_blarg_bin / "blarg"
 
     try:
-        subprocess.run(scp_cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"FATAL: scp failed: {e}", file=sys.stderr)
+        shutil.copy2(Path(__file__).resolve(), local_blarg_path)
+    except Exception as e:
+        print(f"FATAL: Failed to copy blarg script locally: {e}", file=sys.stderr)
+        return 1
+
+    # Stream project to remote via tar over SSH
+    tar_cmd = [
+        "tar",
+        "czf", "-",
+        # "--exclude=.git",  # TODO: get rid of .git directories
+        "-C", str(resolved_working_dir),
+        "."
+    ]
+
+    ssh_extract_cmd = f"tar xzf - -C {remote_temp_dir}"
+    full_ssh_cmd = ["ssh"] + ssh_options + [ssh_target, ssh_extract_cmd]
+
+    try:
+        tar_proc = subprocess.Popen(
+            tar_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        ssh_proc = subprocess.Popen(
+            full_ssh_cmd,
+            stdin=tar_proc.stdout,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        if not tar_proc.stdout:
+            raise ValueError("tar stdout is None.")
+
+        tar_proc.stdout.close()
+
+        tar_exit_code = tar_proc.wait()
+        _, ssh_error = ssh_proc.communicate()
+
+        if tar_exit_code != 0:
+            print(f"FATAL: tar failed with exit code {tar_exit_code}", file=sys.stderr)
+            return 1
+
+        if ssh_proc.returncode != 0:
+            error_msg = ssh_error.decode() if ssh_error else "unknown error"
+            print(f"FATAL: SSH extraction failed: {error_msg}", file=sys.stderr)
+            return 1
+
+    except Exception as e:
+        print(f"FATAL: Failed to stream project to remote: {e}", file=sys.stderr)
         return 1
 
     ssh_cmd = ["ssh", "-t"] + ssh_options + [ssh_target]
 
-    # Install blarg script to remote temp dir
-    blarg_script = Path(__file__).resolve()
-    remote_blarg_dir = f"{remote_temp_dir}/.blarg/bin"
-    install_blarg_cmd = ssh_cmd + [f"mkdir -p {remote_blarg_dir}"]
-    try:
-        subprocess.run(install_blarg_cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"FATAL: Failed to create remote blarg dir: {e}", file=sys.stderr)
-        return 1
-
-    # Copy blarg script to remote
-    scp_blarg_cmd = ["scp", "-p"] + ssh_options + [
-        str(blarg_script),
-        f"{ssh_target}:{remote_blarg_dir}/blarg",
-    ]
-    try:
-        subprocess.run(scp_blarg_cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"FATAL: Failed to copy blarg script: {e}", file=sys.stderr)
-        return 1
-
     # Execute remote command with forwarded args
-    remote_working_dir = f"{remote_temp_dir}/{os.path.basename(working_dir)}"
-    remote_cmd = f"PATH={remote_blarg_dir}:${{PATH}} blarg {' '.join(forwarded_args)}"
+    remote_working_dir = remote_temp_dir
+    remote_cmd = f"PATH={remote_temp_dir}/.blarg/bin:${{PATH}} blarg {' '.join(forwarded_args)}"
     full_ssh_cmd = ssh_cmd + [f"cd {remote_working_dir} && {remote_cmd}"]
     cleanup_cmd = ssh_cmd + [f"rm -rf {remote_temp_dir}"]
 
