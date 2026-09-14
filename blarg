@@ -17,7 +17,7 @@ from tempfile import TemporaryDirectory
 from typing import List, MutableMapping, Optional
 
 
-VERSION = "0.7.0"
+VERSION = "0.7.0-rc1"
 
 
 STDLIB = """
@@ -422,7 +422,7 @@ def execute_remote(
         return 1
 
     # Stream project to remote via tar over SSH
-    tar_cmd = [
+    tar_bundle_cmd = [
         "tar",
         "czf", "-",
         # "--exclude=.git",  # TODO: get rid of .git directories
@@ -430,18 +430,18 @@ def execute_remote(
         "."
     ]
 
-    ssh_extract_cmd = f"tar xzf - -C {remote_temp_dir}"
-    full_ssh_cmd = ["ssh"] + ssh_options + [ssh_target, ssh_extract_cmd]
+    tar_extract_cmd = f"tar xzf - -C {remote_temp_dir}"
+    ssh_extract_cmd = ["ssh"] + ssh_options + [ssh_target, tar_extract_cmd]
 
     try:
         tar_proc = subprocess.Popen(
-            tar_cmd,
+            tar_bundle_cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
 
         ssh_proc = subprocess.Popen(
-            full_ssh_cmd,
+            ssh_extract_cmd,
             stdin=tar_proc.stdout,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
@@ -468,16 +468,18 @@ def execute_remote(
         print(f"FATAL: Failed to stream project to remote: {e}", file=sys.stderr)
         return 1
 
-    ssh_cmd = ["ssh"] + ssh_options + [ssh_target]
-
-    # Execute remote command with forwarded args
     remote_working_dir = remote_temp_dir
-    remote_cmd = f"PATH={remote_temp_dir}/.blarg/bin:${{PATH}} blarg {' '.join(forwarded_args)}"
-    full_ssh_cmd = ssh_cmd + [f"cd {remote_working_dir} && {remote_cmd}"]
-    cleanup_cmd = ssh_cmd + [f"rm -rf {remote_temp_dir}"]
+    blarg_cmd = (
+        f"PATH={remote_temp_dir}/.blarg/bin:${{PATH}} blarg {' '.join(forwarded_args)}"
+    )
+    ssh_blarg_cmd = (
+        ["ssh", "-t"]
+        + ssh_options
+        + [ssh_target, f"cd {remote_working_dir} && {blarg_cmd}"]
+    )
 
     try:
-        process = subprocess.Popen(full_ssh_cmd)
+        process = subprocess.Popen(ssh_blarg_cmd)
         process.wait()
         return process.returncode
     except subprocess.CalledProcessError as e:
@@ -485,6 +487,11 @@ def execute_remote(
         return 1
     finally:
         try:
+            cleanup_cmd = (
+                ["ssh"]
+                + ssh_options
+                + [ssh_target, f"rm -rf {remote_temp_dir}"]
+            )
             subprocess.run(cleanup_cmd)
         except Exception:
             pass  # Ignore cleanup errors
