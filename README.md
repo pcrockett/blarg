@@ -14,11 +14,12 @@ With `blarg` you can easily define targets using plain Bash.
 
 ## Features
 
-* simple target format (plain Bash)
-* no installation required
-* no configuration required
-* no dependencies required (beyond what comes in a "normal" Linux distribution)
-* easy code sharing between targets via an optional `lib.d` directory
+- simple target format (plain Bash)
+- no installation required
+- no configuration required
+- no dependencies required (beyond what comes in a "normal" Linux distribution)
+- easy code sharing between targets via an optional `lib.d` directory
+- can run on local or remote systems via SSH
 
 ## Example
 
@@ -59,13 +60,17 @@ For a real-world example involving a much larger dependency tree, see
 
 ## Minimalism
 
-`blarg` is a single Python script with less than 500 lines of code. It has three
+`blarg` is a single Python script with less than 700 lines of code. It has three
 dependencies (which are found on almost every Linux distribution out-of-the-box):
 
-* Python 3.7 or newer
-* Bash
-* GNU Coreutils
-* Optional: Git (if you use the [external modules feature](https://github.com/pcrockett/blarg-targets))
+- Python 3.7 or newer
+- Bash
+- GNU Coreutils
+
+...and three optional dependencies:
+
+- Git (if you use the [external modules feature](https://github.com/pcrockett/blarg-targets))
+- SSH and tar (if you want to run your targets on a remote machine)
 
 `blarg` has three design goals:
 

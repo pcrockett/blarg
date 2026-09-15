@@ -4,18 +4,20 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+
 
 from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import rmtree
 from tempfile import TemporaryDirectory
-from typing import List, Optional
+from typing import List, Mapping, MutableMapping, Optional
 
 
-VERSION = "0.6.1"
+VERSION = "0.7.0-rc1"
 
 
 STDLIB = """
@@ -202,6 +204,7 @@ class CliArgs:
     version: bool
     verbose: bool
     dry_run: bool
+    ssh: Optional[str] = None
 
 
 class CliParser(argparse.ArgumentParser):
@@ -231,6 +234,11 @@ class CliParser(argparse.ArgumentParser):
         self.add_argument(
             "--dry-run", "-r", help="don't apply targets", action="store_true"
         )
+        self.add_argument(
+            "--ssh",
+            help="Execute on remote machine via SSH",
+            metavar="SSH_TARGET",
+        )
 
 
 def parse_args() -> CliArgs:
@@ -241,6 +249,7 @@ def parse_args() -> CliArgs:
         args.version,
         args.verbose,
         args.dry_run,
+        args.ssh,
     )
 
 
@@ -346,49 +355,178 @@ def parse_config(config_path: Path) -> BlargConfig:
     return BlargConfig(modules)
 
 
-def main() -> int:
-    args = parse_args()
+class SshCommandBuilder:
+    def __init__(self, remote_target: str, env: Mapping[str, str]):
+        self._remote_target = remote_target
 
-    if args.version:
-        print(f"blarg version {VERSION}")
-        return 0
+        local_control_dir = Path(env.get("TMPDIR", "/tmp")) / "blarg-ssh"
+        local_control_dir.mkdir(parents=True, exist_ok=True)
 
-    if not args.script_path:
-        CliParser().print_help()
-        return 0
+        self._ssh_options = [
+            "-o", f"ControlPath={local_control_dir}/%C",
+            "-o", "ControlMaster=auto",
+            "-o", "ControlPersist=10",
+        ]
 
-    script_path = args.script_path
-    if script_path.is_dir():
-        script_path = script_path / "main.bash"
+    def build(self, remote_command: str, pty: bool = False) -> List[str]:
+        base = ["ssh", "-t"] if pty else ["ssh"]
+        return base + self._ssh_options + [self._remote_target, remote_command]
 
-    env = os.environ
-    working_dir = Path(os.getcwd())
 
-    if not env.get("BLARG_CWD"):
-        env["BLARG_CWD"] = str(working_dir)
+def execute_remote(
+    ssh_target: str,
+    working_dir: Path,
+    script_path: Path,
+    env: MutableMapping[str, str],
+    verbose: bool,
+    dry_run: bool,
+) -> int:
+    resolved_script_path = script_path.resolve()
+    resolved_working_dir = working_dir.resolve()
+    if not str(resolved_script_path).startswith(str(resolved_working_dir)):
+        print(
+            f"FATAL: Target path {script_path} is outside the project directory {working_dir}",
+            file=sys.stderr,
+        )
+        return 1
 
-    module_dir_str = env.get("BLARG_MODULE_DIR")
-    if module_dir_str is None:  # TODO: document difference between module dir and CWD
-        module_dir = working_dir
-        env["BLARG_MODULE_DIR"] = str(module_dir)
-    else:
-        module_dir = Path(module_dir_str)
+    if shutil.which("ssh") is None:
+        print("FATAL: ssh not found", file=sys.stderr)
+        return 1
 
-    if args.dump_src:
-        print(generate_script(module_dir, script_path))
-        return 0
+    if shutil.which("tar") is None:
+        print("FATAL: tar not found", file=sys.stderr)
+        return 1
 
-    config = parse_config(module_dir / "blarg.conf")
-    for module in config.modules:
-        external_module_dir = module.init(working_dir)
-        env[f"BLARG_MODULE_{module.id}"] = str(external_module_dir)
+    forwarded_args = []
+    if verbose:
+        forwarded_args.append("--verbose")
+    if dry_run:
+        forwarded_args.append("--dry-run")
+    forwarded_args.append(str(script_path))
 
+    ssh_builder = SshCommandBuilder(ssh_target, env)
+
+    probe_cmd = ssh_builder.build("true")
+    try:
+        process = subprocess.Popen(probe_cmd)
+        process.wait()
+        if process.returncode != 0:
+            print(
+                f"FATAL: SSH command `{' '.join(probe_cmd)}`"
+                f"exited with code {process.returncode}",
+                file=sys.stderr
+            )
+            return process.returncode
+    except Exception as e:
+        print(f"FATAL: Failed to connect to remote: {e}", file=sys.stderr)
+        return 1
+
+    create_temp_cmd = ssh_builder.build("mktemp -d ${TMPDIR:-/tmp}/blarg-XXXXXX")
+    try:
+        result = subprocess.run(create_temp_cmd, capture_output=True, text=True, check=True)
+        remote_temp_dir = result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"FATAL: Failed to create remote temp dir: {e}", file=sys.stderr)
+        return 1
+
+    # Copy blarg script to local .blarg/bin for inclusion in tar
+    local_blarg_bin = working_dir / ".blarg" / "bin"
+    local_blarg_bin.mkdir(parents=True, exist_ok=True)
+    local_blarg_path = local_blarg_bin / "blarg"
+
+    try:
+        shutil.copy2(Path(__file__).resolve(), local_blarg_path)
+    except Exception as e:
+        print(f"FATAL: Failed to copy blarg script locally: {e}", file=sys.stderr)
+        return 1
+
+    # Stream project to remote via tar over SSH
+    tar_bundle_cmd = [
+        "tar",
+        "czf", "-",
+        # "--exclude=.git",  # TODO: get rid of .git directories
+        "-C", str(resolved_working_dir),
+        "."
+    ]
+
+    ssh_extract_cmd = ssh_builder.build(f"tar xzf - -C {remote_temp_dir}")
+
+    try:
+        tar_proc = subprocess.Popen(
+            tar_bundle_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        ssh_proc = subprocess.Popen(
+            ssh_extract_cmd,
+            stdin=tar_proc.stdout,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        if tar_proc.stdout is None:
+            raise ValueError("tar stdout is None.")
+
+        tar_proc.stdout.close()
+
+        tar_exit_code = tar_proc.wait()
+        _, ssh_error = ssh_proc.communicate()
+
+        if tar_exit_code != 0:
+            print(f"FATAL: tar failed with exit code {tar_exit_code}", file=sys.stderr)
+            return 1
+
+        if ssh_proc.returncode != 0:
+            error_msg = ssh_error.decode() if ssh_error else "unknown error"
+            print(f"FATAL: SSH extraction failed: {error_msg}", file=sys.stderr)
+            return 1
+
+    except Exception as e:
+        print(f"FATAL: Failed to stream project to remote: {e}", file=sys.stderr)
+        return 1
+
+    remote_working_dir = remote_temp_dir
+    blarg_cmd = (
+        f"PATH={remote_temp_dir}/.blarg/bin:${{PATH}} blarg {' '.join(forwarded_args)}"
+    )
+    ssh_blarg_cmd = ssh_builder.build(
+        f"cd {remote_working_dir} && {blarg_cmd}",
+        pty=True,
+    )
+
+    try:
+        process = subprocess.Popen(ssh_blarg_cmd)
+        process.wait()
+        return process.returncode
+    except subprocess.CalledProcessError as e:
+        print(f"FATAL: SSH command failed: {e}", file=sys.stderr)
+        return 1
+    finally:
+        try:
+            cleanup_cmd = ssh_builder.build(f"rm -rf {remote_temp_dir}")
+            subprocess.run(cleanup_cmd)
+        except Exception:
+            pass  # Ignore cleanup errors
+
+
+def execute_local(
+        working_dir: Path,
+        module_dir: Path,
+        script_path: Path,
+        env: MutableMapping[str, str],
+        verbose: bool,
+        dry_run: bool
+    ):
     resolved_path = script_path.resolve()
     env["BLARG_TARGET_PATH"] = str(resolved_path)
 
-    is_verbose = args.verbose or "BLARG_VERBOSE" in env
-    if is_verbose:
-        env["BLARG_VERBOSE"] = str(is_verbose)
+    if verbose:
+        env["BLARG_VERBOSE"] = str(verbose)
+
+    if not env.get("BLARG_CWD"):
+        env["BLARG_CWD"] = str(working_dir)
 
     targets_dir = env.get("BLARG_TARGETS_DIR")
     if targets_dir:
@@ -397,7 +535,7 @@ def main() -> int:
         targets_dir = str(Path.cwd() / "targets")
         env["BLARG_TARGETS_DIR"] = targets_dir
 
-    dry_run = args.dry_run or "BLARG_DRY_RUN" in env
+    dry_run = dry_run or "BLARG_DRY_RUN" in env
     if dry_run:
         env["BLARG_DRY_RUN"] = str(dry_run)
 
@@ -460,6 +598,65 @@ def main() -> int:
 
     return result.returncode
 
+
+def main() -> int:
+    args = parse_args()
+
+    if args.version:
+        print(f"blarg version {VERSION}")
+        return 0
+
+    if args.ssh and args.dump_src:
+        print("FATAL: --ssh and --dump-src are mutually exclusive", file=sys.stderr)
+        return 1
+
+    if not args.script_path:
+        CliParser().print_help()
+        return 0
+
+    script_path = args.script_path
+    if script_path.is_dir():
+        script_path = script_path / "main.bash"
+
+    env = os.environ
+    working_dir = Path(os.getcwd())
+
+    module_dir_str = env.get("BLARG_MODULE_DIR")
+    if module_dir_str is None:  # TODO: document difference between module dir and CWD
+        module_dir = working_dir
+        env["BLARG_MODULE_DIR"] = str(module_dir)
+    else:
+        module_dir = Path(module_dir_str)
+
+    if args.dump_src:
+        print(generate_script(module_dir, script_path))
+        return 0
+
+    config = parse_config(module_dir / "blarg.conf")
+    for module in config.modules:
+        external_module_dir = module.init(working_dir)
+        env[f"BLARG_MODULE_{module.id}"] = str(external_module_dir)
+
+    is_verbose = args.verbose or "BLARG_VERBOSE" in env
+
+    if args.ssh:
+        return execute_remote(
+            args.ssh,
+            working_dir,
+            script_path,
+            env,
+            is_verbose,
+            args.dry_run,
+        )
+    else:
+        return execute_local(
+            working_dir,
+            module_dir,
+            script_path,
+            env,
+            is_verbose,
+            args.dry_run,
+        )
 
 if __name__ == "__main__":
     exit_code = main()

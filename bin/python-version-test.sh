@@ -24,7 +24,11 @@ main() {
                 --tag "blarg-ci:${v}" \
                 .
         fi
-        docker run --rm --mount "type=bind,source=.,target=/app,readonly" "blarg-ci:${v}"
+        docker run \
+            --rm \
+            --mount "type=bind,source=.,target=/app,readonly" \
+            --network host \
+            "blarg-ci:${v}"
     done
 }
 

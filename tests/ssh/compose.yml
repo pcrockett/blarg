@@ -1,0 +1,7 @@
+services:
+  ssh-remote:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:2222:22"

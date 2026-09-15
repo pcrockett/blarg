@@ -5,12 +5,30 @@ setup() {
     TEST_CWD="$(mktemp --directory --tmpdir=/tmp blarg-test.XXXXXX)"
     TEST_HOME="$(mktemp --directory --tmpdir=/tmp blarg-home.XXXXXX)"
     REPO_HOME="$(pwd)"
-    mkdir -p "${TEST_HOME}/.local/bin"
-    cp blarg "${TEST_HOME}/.local/bin"
+    TEST_BIN="${TEST_HOME}/.local/bin"
+    mkdir -p "${TEST_BIN}"
+    cp blarg "${TEST_BIN}"
 
     cd "${TEST_CWD}"
-    PATH="${TEST_HOME}/.local/bin:${PATH}"
+    export PATH="${TEST_BIN}:${PATH}"
     export HOME="${TEST_HOME}"
+
+    mkdir -p "${TEST_HOME}/.ssh"
+    cat >"${TEST_HOME}/.ssh/config" <<EOF
+Host test-ssh-server
+  HostName ${BLARG_SSH_TEST_HOST:-localhost}
+  Port ${BLARG_SSH_TEST_PORT:-2222}
+  User ${BLARG_SSH_TEST_USER:-testuser}
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  IdentityFile ${TEST_HOME}/.ssh/id_ed25519
+  LogLevel ERROR
+EOF
+    chmod 600 "${TEST_HOME}/.ssh/config"
+    cp "${REPO_HOME}/tests/ssh/test_key" "${TEST_HOME}/.ssh/id_ed25519"
+    chmod 600 "${TEST_HOME}/.ssh/id_ed25519"
+
+    cp "${REPO_HOME}/tests/ssh/ssh_wrapper.bash" "${TEST_BIN}/ssh"
 }
 
 teardown() {
@@ -56,8 +74,8 @@ capture_output() {
     capture_exit_code "${@}" \
         >"${stdout_file}" \
         2>"${stderr_file}"
-    TEST_STDOUT="$(cat "${stdout_file}")"
-    TEST_STDERR="$(cat "${stderr_file}")"
+    TEST_STDOUT="$(tr -d '\r' <"${stdout_file}")"
+    TEST_STDERR="$(tr -d '\r' <"${stderr_file}")"
     rm -f "${stdout_file}" "${stderr_file}"
 }
 
