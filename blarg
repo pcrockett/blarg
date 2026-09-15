@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from shutil import rmtree
 from tempfile import TemporaryDirectory
-from typing import List, MutableMapping, Optional
+from typing import List, Mapping, MutableMapping, Optional
 
 
 VERSION = "0.7.0-rc1"
@@ -355,6 +355,24 @@ def parse_config(config_path: Path) -> BlargConfig:
     return BlargConfig(modules)
 
 
+class SshCommandBuilder:
+    def __init__(self, remote_target: str, env: Mapping[str, str]):
+        self._remote_target = remote_target
+
+        local_control_dir = Path(env.get("TMPDIR", "/tmp")) / "blarg-ssh"
+        local_control_dir.mkdir(parents=True, exist_ok=True)
+
+        self._ssh_options = [
+            "-o", f"ControlPath={local_control_dir}/%C",
+            "-o", "ControlMaster=auto",
+            "-o", "ControlPersist=10",
+        ]
+
+    def build(self, remote_command: str, pty: bool = False) -> List[str]:
+        base = ["ssh", "-t"] if pty else ["ssh"]
+        return base + self._ssh_options + [self._remote_target, remote_command]
+
+
 def execute_remote(
     ssh_target: str,
     working_dir: Path,
@@ -387,22 +405,24 @@ def execute_remote(
         forwarded_args.append("--dry-run")
     forwarded_args.append(str(script_path))
 
-    local_control_dir = Path(env.get("TMPDIR", "/tmp")) / "blarg-ssh"
-    local_control_dir.mkdir(parents=True, exist_ok=True)
+    ssh_builder = SshCommandBuilder(ssh_target, env)
 
-    control_socket = local_control_dir / f"%C-{ssh_target}"
+    probe_cmd = ssh_builder.build("true")
+    try:
+        process = subprocess.Popen(probe_cmd)
+        process.wait()
+        if process.returncode != 0:
+            print(
+                f"FATAL: SSH command `{' '.join(probe_cmd)}`"
+                f"exited with code {process.returncode}",
+                file=sys.stderr
+            )
+            return process.returncode
+    except Exception as e:
+        print(f"FATAL: Failed to connect to remote: {e}", file=sys.stderr)
+        return 1
 
-    ssh_options = [
-        "-o", f"ControlPath={control_socket}",
-        "-o", "ControlMaster=auto",
-        "-o", "ControlPersist=10",
-    ]
-
-    remote_temp_dir_cmd = "mktemp -d ${TMPDIR:-/tmp}/blarg-XXXXXX"
-    create_temp_cmd = ["ssh"] + ssh_options + [
-        ssh_target,
-        remote_temp_dir_cmd
-    ]
+    create_temp_cmd = ssh_builder.build("mktemp -d ${TMPDIR:-/tmp}/blarg-XXXXXX")
     try:
         result = subprocess.run(create_temp_cmd, capture_output=True, text=True, check=True)
         remote_temp_dir = result.stdout.strip()
@@ -430,8 +450,7 @@ def execute_remote(
         "."
     ]
 
-    tar_extract_cmd = f"tar xzf - -C {remote_temp_dir}"
-    ssh_extract_cmd = ["ssh"] + ssh_options + [ssh_target, tar_extract_cmd]
+    ssh_extract_cmd = ssh_builder.build(f"tar xzf - -C {remote_temp_dir}")
 
     try:
         tar_proc = subprocess.Popen(
@@ -472,10 +491,9 @@ def execute_remote(
     blarg_cmd = (
         f"PATH={remote_temp_dir}/.blarg/bin:${{PATH}} blarg {' '.join(forwarded_args)}"
     )
-    ssh_blarg_cmd = (
-        ["ssh", "-t"]
-        + ssh_options
-        + [ssh_target, f"cd {remote_working_dir} && {blarg_cmd}"]
+    ssh_blarg_cmd = ssh_builder.build(
+        f"cd {remote_working_dir} && {blarg_cmd}",
+        pty=True,
     )
 
     try:
@@ -487,11 +505,7 @@ def execute_remote(
         return 1
     finally:
         try:
-            cleanup_cmd = (
-                ["ssh"]
-                + ssh_options
-                + [ssh_target, f"rm -rf {remote_temp_dir}"]
-            )
+            cleanup_cmd = ssh_builder.build(f"rm -rf {remote_temp_dir}")
             subprocess.run(cleanup_cmd)
         except Exception:
             pass  # Ignore cleanup errors
