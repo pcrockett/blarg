@@ -17,7 +17,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, List, IO, Mapping, MutableMapping, Optional
 
 
-VERSION = "0.7.0-rc1"
+VERSION = "0.7.0-rc2"
 
 
 STDLIB = """
