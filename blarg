@@ -446,7 +446,7 @@ def execute_remote(
         # ex: tailscale SSH often shows a link you can click on to go through a
         # web-based login flow.
 
-        connect_status = ssh.start(f"mkdir -p {remote_temp_dir}").wait()
+        connect_status = ssh.start(f"mkdir -m 700 -p {remote_temp_dir}").wait()
         if connect_status != 0:
             print(
                 f"FATAL: ssh exited with code {connect_status}",
