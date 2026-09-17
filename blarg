@@ -5,6 +5,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import shutil
 import subprocess
 import sys
@@ -420,7 +421,7 @@ def execute_remote(
         forwarded_args.append("--verbose")
     if dry_run:
         forwarded_args.append("--dry-run")
-    forwarded_args.append(str(script_path))
+    forwarded_args.append(shlex.quote(str(script_path)))
 
     # Copy blarg script to local .blarg/bin for inclusion in tar
     local_blarg_bin = working_dir / ".blarg" / "bin"
@@ -500,7 +501,7 @@ def execute_remote(
 
     remote_working_dir = remote_temp_dir
     blarg_cmd = (
-        f"PATH={remote_temp_dir}/.blarg/bin:${{PATH}} blarg {' '.join(forwarded_args)}"
+        f'PATH="{remote_temp_dir}/.blarg/bin:${{PATH}}" blarg {" ".join(forwarded_args)}'
     )
 
     try:
