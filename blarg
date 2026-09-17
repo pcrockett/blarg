@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -372,16 +373,9 @@ class SSHProcess:
         self,
         remote_command: str,
         pty: bool = False,
-        text_io: bool = False,
     ) -> subprocess.Popen:
         full_command = self._build_ssh_command(remote_command, pty)
-        output_mode = subprocess.PIPE if text_io else None
-        return subprocess.Popen(
-            full_command,
-            text=text_io,
-            stdout=output_mode,
-            stderr=output_mode,
-        )
+        return subprocess.Popen(full_command)
 
     def send_data(
         self,
@@ -441,6 +435,9 @@ def execute_remote(
 
     ssh = SSHProcess(ssh_target, env)
 
+    # intentionally using quoted, unresolved shell syntax
+    remote_temp_dir = f'"${{TMPDIR:-/tmp}}/blarg-{secrets.token_urlsafe(6)}"'
+
     try:
         # setup initial connection where user can see prompts if any, and get through
         # them.
@@ -448,7 +445,7 @@ def execute_remote(
         # ex: tailscale SSH often shows a link you can click on to go through a
         # web-based login flow.
 
-        connect_status = ssh.start("true").wait()
+        connect_status = ssh.start(f"mkdir -p {remote_temp_dir}").wait()
         if connect_status != 0:
             print(
                 f"FATAL: ssh exited with code {connect_status}",
@@ -457,23 +454,6 @@ def execute_remote(
             return connect_status
     except Exception as e:
         print(f"FATAL: Failed to connect to remote: {e}", file=sys.stderr)
-        return 1
-
-    try:
-        tmpdir_process = ssh.start(
-            "mktemp -d ${TMPDIR:-/tmp}/blarg-XXXXXX",
-            text_io=True,
-        )
-        mktemp_out, mktemp_err = tmpdir_process.communicate()
-        if tmpdir_process.returncode != 0:
-            print(
-                f"FATAL: mktemp failed with exit code {tmpdir_process.returncode}\n"
-                + mktemp_err
-            )
-            return 1
-        remote_temp_dir = mktemp_out.strip()
-    except Exception as e:
-        print(f"FATAL: Failed to create remote temp dir: {e}", file=sys.stderr)
         return 1
 
     # Stream project to remote via tar over SSH
