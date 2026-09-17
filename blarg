@@ -436,23 +436,23 @@ def execute_remote(
 
     ssh = SSHProcess(ssh_target, env)
 
-    # intentionally using quoted, unresolved shell syntax
+    # temp dir string intentionally unresolved, expecting the remote shell to handle
+    # variable expansion etc.
+    #
+    # safe since i control all the inputs, and shell variable expansion should handle
+    # any craziness that might be hiding in TMPDIR env variable.
     remote_temp_dir = f'"${{TMPDIR:-/tmp}}/blarg-{secrets.token_urlsafe(6)}"'
 
     try:
-        # setup initial connection where user can see prompts if any, and get through
-        # them.
-        #
-        # ex: tailscale SSH often shows a link you can click on to go through a
-        # web-based login flow.
+        # mode 700 equivalent to `u=rwx,g=,o=`
+        mkdir_status = ssh.start(f"mkdir -m 700 -p {remote_temp_dir}").wait()
 
-        connect_status = ssh.start(f"mkdir -m 700 -p {remote_temp_dir}").wait()
-        if connect_status != 0:
+        if mkdir_status != 0:
             print(
-                f"FATAL: ssh exited with code {connect_status}",
+                f"FATAL: ssh exited with code {mkdir_status}",
                 file=sys.stderr
             )
-            return connect_status
+            return mkdir_status
     except Exception as e:
         print(f"FATAL: Failed to connect to remote: {e}", file=sys.stderr)
         return 1
