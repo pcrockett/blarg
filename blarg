@@ -326,7 +326,9 @@ class ExternalModule:
                     ],
                     check=True,
                 )
-                temp_dir.move(module_dir)
+                # backward-compat: can use `temp_dir.move()` if we drop support for
+                # python 3.7 and 3.8.
+                shutil.move(str(temp_dir), str(module_dir))
             except:
                 rmtree_if_exists(module_dir)
                 rmtree_if_exists(temp_dir)
