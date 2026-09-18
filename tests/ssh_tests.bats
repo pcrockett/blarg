@@ -2,12 +2,21 @@
 
 source tests/util.sh
 
-@test 'ssh - basic execution - success' {
+@test 'ssh - successful target - success' {
     use_target simple_apply
     capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
     assert_no_stderr
     assert_stdout '^hi$'
     assert_exit_code 0
+}
+
+@test 'ssh - failed target - fails' {
+    use_target panic
+    capture_output blarg --ssh test-ssh-server targets/panic.bash </dev/null
+    assert_stderr '^FATAL: OMG panic!
+FATAL: panic\.apply\(\) returned with code 1\.$'
+    assert_no_stdout
+    assert_exit_code 1
 }
 
 @test 'ssh - with verbose flag - verbose output' {
@@ -46,11 +55,13 @@ hi
 
 @test 'ssh - failed run - removes temp dir' {
     use_target pwd_then_panic
-    working_dir="$(blarg --ssh test-ssh-server targets/pwd_then_panic.bash 2>/dev/null)" || true
 
-    # FIXME: stderr on remote is getting dumped to stdout locally
-    capture_output echo "${working_dir}"
-    assert_stdout '^/tmp/blarg-\\S+$'
+    working_dir="$(
+        # the </dev/null causes ssh to properly forward stderr and stdout to the right
+        # places. without it, the pty setup dumps everything to stdout. not good, since
+        # we want to discard the PANIC error messages.
+        blarg --ssh test-ssh-server targets/pwd_then_panic.bash </dev/null
+    )" || true
 
     capture_output ssh test-ssh-server test -d "${working_dir}"
     assert_no_stdout
