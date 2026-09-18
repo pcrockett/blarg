@@ -35,9 +35,23 @@ hi
     assert_no_stdout
 }
 
-@test 'ssh - always - removes temp dir' {
+@test 'ssh - successful run - removes temp dir' {
     use_target pwd
     working_dir="$(blarg --ssh test-ssh-server targets/pwd.bash)"
+    capture_output ssh test-ssh-server test -d "${working_dir}"
+    assert_no_stdout
+    assert_no_stderr
+    assert_exit_code 1
+}
+
+@test 'ssh - failed run - removes temp dir' {
+    use_target pwd_then_panic
+    working_dir="$(blarg --ssh test-ssh-server targets/pwd_then_panic.bash 2>/dev/null)" || true
+
+    # FIXME: stderr on remote is getting dumped to stdout locally
+    capture_output echo "${working_dir}"
+    assert_stdout '^/tmp/blarg-\\S+$'
+
     capture_output ssh test-ssh-server test -d "${working_dir}"
     assert_no_stdout
     assert_no_stderr
