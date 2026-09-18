@@ -391,7 +391,7 @@ ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
 
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.\$"
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1\\.tmp'\\.\\.\\.\$"
     expected_stdout='^foobar!
 BLARG_CWD=/tmp/blarg-test\..{6}
 .*
@@ -430,7 +430,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.\$"
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1\\.tmp'\\.\\.\\.\$"
     assert_exit_code 0
 }
 
@@ -635,7 +635,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1\\.tmp'\\.\\.\\.
 FATAL: Target does not exist: @some_module:foobar\$"
     assert_no_stdout
     assert_exit_code 1
@@ -658,7 +658,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1\\.tmp'\\.\\.\\.
 .*fatal: Could not read from remote repository\.
 "
     assert_no_stdout
