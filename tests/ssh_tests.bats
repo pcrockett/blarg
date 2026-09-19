@@ -3,7 +3,10 @@
 source tests/util.sh
 
 blarg_ssh() {
-    blarg --ssh test-ssh-server "$@"
+    # the `</dev/null` causes ssh to properly forward stderr and stdout to the right
+    # places in the right way. without it, the pty setup dumps everything to stdout,
+    # adds `\r` linefeed characters, etc.
+    blarg --ssh test-ssh-server "$@" </dev/null
 }
 
 @test 'ssh - successful target - success' {
@@ -16,7 +19,7 @@ blarg_ssh() {
 
 @test 'ssh - failed target - fails' {
     use_target panic
-    capture_output blarg_ssh targets/panic.bash </dev/null
+    capture_output blarg_ssh targets/panic.bash
     assert_stderr '^FATAL: OMG panic!
 FATAL: panic\.apply\(\) returned with code 1\.$'
     assert_no_stdout
@@ -68,14 +71,7 @@ hi
 
 @test 'ssh - failed run - removes temp dir' {
     use_target pwd_then_panic
-
-    working_dir="$(
-        # the </dev/null causes ssh to properly forward stderr and stdout to the right
-        # places. without it, the pty setup dumps everything to stdout. not good, since
-        # we want to discard the PANIC error messages.
-        blarg_ssh targets/pwd_then_panic.bash </dev/null
-    )" || true
-
+    working_dir="$(blarg_ssh targets/pwd_then_panic.bash)" || true
     capture_output ssh test-ssh-server test -d "${working_dir}"
     assert_no_stdout
     assert_no_stderr

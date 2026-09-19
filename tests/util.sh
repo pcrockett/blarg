@@ -72,8 +72,8 @@ capture_output() {
     capture_exit_code "${@}" \
         >"${stdout_file}" \
         2>"${stderr_file}"
-    TEST_STDOUT="$(tr -d '\r' <"${stdout_file}")"
-    TEST_STDERR="$(tr -d '\r' <"${stderr_file}")"
+    TEST_STDOUT="$(cat "${stdout_file}")"
+    TEST_STDERR="$(cat "${stderr_file}")"
     rm -f "${stdout_file}" "${stderr_file}"
 }
 
