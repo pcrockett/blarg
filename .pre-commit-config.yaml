@@ -56,3 +56,10 @@ repos:
         language: system
         types:
           - dockerfile
+      - id: ruff
+        name: autoformat python files
+        entry: ruff
+        language: system
+        types:
+          - python
+        args: [format]
