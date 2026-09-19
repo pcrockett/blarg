@@ -44,6 +44,15 @@ hi
     assert_no_stdout
 }
 
+@test 'ssh - crazy target name - uses proper shell quoting' {
+    use_target simple_apply
+    mv targets/simple_apply.bash 'targets/simple;apply.bash'
+    capture_output blarg --ssh test-ssh-server 'targets/simple;apply.bash'
+    assert_no_stderr
+    assert_stdout '^hi$'
+    assert_exit_code 0
+}
+
 @test 'ssh - successful run - removes temp dir' {
     use_target pwd
     working_dir="$(blarg --ssh test-ssh-server targets/pwd.bash)"
