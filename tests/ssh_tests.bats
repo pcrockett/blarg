@@ -2,9 +2,13 @@
 
 source tests/util.sh
 
+blarg_ssh() {
+    blarg --ssh test-ssh-server "$@"
+}
+
 @test 'ssh - successful target - success' {
     use_target simple_apply
-    capture_output blarg --ssh test-ssh-server targets/simple_apply.bash
+    capture_output blarg_ssh targets/simple_apply.bash
     assert_no_stderr
     assert_stdout '^hi$'
     assert_exit_code 0
@@ -12,7 +16,7 @@ source tests/util.sh
 
 @test 'ssh - failed target - fails' {
     use_target panic
-    capture_output blarg --ssh test-ssh-server targets/panic.bash </dev/null
+    capture_output blarg_ssh targets/panic.bash </dev/null
     assert_stderr '^FATAL: OMG panic!
 FATAL: panic\.apply\(\) returned with code 1\.$'
     assert_no_stdout
@@ -21,7 +25,7 @@ FATAL: panic\.apply\(\) returned with code 1\.$'
 
 @test 'ssh - with verbose flag - verbose output' {
     use_target simple_apply
-    capture_output blarg --ssh test-ssh-server --verbose targets/simple_apply.bash
+    capture_output blarg_ssh --verbose targets/simple_apply.bash
     assert_exit_code 0
     assert_stdout '^--> simple_apply \[running\.\.\.\]
 hi
@@ -31,14 +35,14 @@ hi
 
 @test 'ssh - with dry-run flag - no apply' {
     use_target simple_apply
-    capture_output blarg --ssh test-ssh-server --dry-run targets/simple_apply.bash
+    capture_output blarg_ssh --dry-run targets/simple_apply.bash
     assert_exit_code 1
     assert_stdout '^dry-run: would apply simple_apply$'
     assert_no_stderr
 }
 
 @test 'ssh - invalid target path - error' {
-    capture_output blarg --ssh test-ssh-server /etc/hosts
+    capture_output blarg_ssh /etc/hosts
     assert_exit_code 1
     assert_stderr 'outside the project directory'
     assert_no_stdout
@@ -47,7 +51,7 @@ hi
 @test 'ssh - crazy target name - uses proper shell quoting' {
     use_target simple_apply
     mv targets/simple_apply.bash 'targets/simple;apply.bash'
-    capture_output blarg --ssh test-ssh-server 'targets/simple;apply.bash'
+    capture_output blarg_ssh 'targets/simple;apply.bash'
     assert_no_stderr
     assert_stdout '^hi$'
     assert_exit_code 0
@@ -55,7 +59,7 @@ hi
 
 @test 'ssh - successful run - removes temp dir' {
     use_target pwd
-    working_dir="$(blarg --ssh test-ssh-server targets/pwd.bash)"
+    working_dir="$(blarg_ssh targets/pwd.bash)"
     capture_output ssh test-ssh-server test -d "${working_dir}"
     assert_no_stdout
     assert_no_stderr
@@ -69,7 +73,7 @@ hi
         # the </dev/null causes ssh to properly forward stderr and stdout to the right
         # places. without it, the pty setup dumps everything to stdout. not good, since
         # we want to discard the PANIC error messages.
-        blarg --ssh test-ssh-server targets/pwd_then_panic.bash </dev/null
+        blarg_ssh targets/pwd_then_panic.bash </dev/null
     )" || true
 
     capture_output ssh test-ssh-server test -d "${working_dir}"
@@ -119,7 +123,7 @@ EOF
 location = file://${module_path}/.git
 ref = v1
 EOF
-    capture_output blarg --ssh test-ssh-server targets/use_external.bash
+    capture_output blarg_ssh targets/use_external.bash
 
     assert_stderr 'Cloning into'
     assert_stdout '^external target output
