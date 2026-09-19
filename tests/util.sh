@@ -24,16 +24,14 @@ Host test-ssh-server
   IdentityFile ${TEST_HOME}/.ssh/id_ed25519
   LogLevel ERROR
 EOF
-    chmod 600 "${TEST_HOME}/.ssh/config"
     cp "${REPO_HOME}/tests/ssh/test_key" "${TEST_HOME}/.ssh/id_ed25519"
-    chmod 600 "${TEST_HOME}/.ssh/id_ed25519"
+    chmod 600 "${TEST_HOME}/.ssh/config" "${TEST_HOME}/.ssh/id_ed25519"
 
     cp "${REPO_HOME}/tests/ssh/ssh_wrapper.bash" "${TEST_BIN}/ssh"
 }
 
 teardown() {
-    rm -rf "${TEST_CWD}"
-    rm -rf "${TEST_HOME}"
+    rm -rf "${TEST_CWD}" "${TEST_HOME}"
 }
 
 fail() {
