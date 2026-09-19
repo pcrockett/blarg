@@ -16,7 +16,7 @@ mkdir -p /home/testuser/.ssh && \
 chmod 700 /home/testuser/.ssh && \
 chown testuser:testuser /home/testuser/.ssh
 
-COPY authorized_keys /home/testuser/.ssh/authorized_keys
+COPY test_key.pub /home/testuser/.ssh/authorized_keys
 RUN \
 chmod 600 /home/testuser/.ssh/authorized_keys && \
 chown testuser:testuser /home/testuser/.ssh/authorized_keys && \
