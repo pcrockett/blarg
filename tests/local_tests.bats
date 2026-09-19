@@ -11,7 +11,7 @@ source tests/util.sh
     capture_output blarg --version
     assert_no_stderr
     assert_exit_code 0
-    assert_stdout '^blarg version [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$'
+    assert_stdout '^blarg version [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-rc[[:digit:]]+)?$'
 }
 
 @test 'no args - always - displays help' {
@@ -156,20 +156,19 @@ hello, there\.\.\.
     capture_output ./targets/print_env.bash
     assert_no_stderr
     assert_exit_code 0
-    stdout_regex="$(
-        cat <<EOF
-^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
-BLARG_INDENT=-->[[:space:]]
-BLARG_MODULE_DIR=/tmp/blarg-test\.[[:alnum:]]+
-BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
-BLARG_RUN_DIR=/tmp/[[:print:]]+
-BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets
-BLARG_TARGET_NAME=print_env
-BLARG_TARGET_PATH=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash$
-EOF
-    )"
-    assert_stdout "${stdout_regex}"
-
+    regexes=(
+        'BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+'
+        'BLARG_INDENT=-->[[:space:]]'
+        'BLARG_MODULE_DIR=/tmp/blarg-test\.[[:alnum:]]+'
+        'BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]'
+        'BLARG_RUN_DIR=/tmp/[[:print:]]+'
+        'BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets'
+        'BLARG_TARGET_NAME=print_env'
+        'BLARG_TARGET_PATH=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash'
+    )
+    for r in "${regexes[@]}"; do
+        assert_stdout "${r}"
+    done
 }
 
 @test 'usecase dir - always - executes main target' {
@@ -391,7 +390,7 @@ ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
 
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.\$"
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1\\.tmp'\\.\\.\\.\$"
     expected_stdout='^foobar!
 BLARG_CWD=/tmp/blarg-test\..{6}
 .*
@@ -430,7 +429,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.\$"
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1\\.tmp'\\.\\.\\.\$"
     assert_exit_code 0
 }
 
@@ -635,7 +634,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1\\.tmp'\\.\\.\\.
 FATAL: Target does not exist: @some_module:foobar\$"
     assert_no_stdout
     assert_exit_code 1
@@ -658,7 +657,7 @@ location = file://~/some_module/.git
 ref = v1
 EOF
     capture_output blarg ./targets/external_module.bash
-    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1'\\.\\.\\.
+    assert_stderr "^Cloning into '/tmp/blarg-test\\..{6}/\\.blarg/modules/some_module/v1\\.tmp'\\.\\.\\.
 .*fatal: Could not read from remote repository\.
 "
     assert_no_stdout

@@ -3,6 +3,7 @@
 ## Commands
 
 - **Test**: `bats ./tests` or `make test`
+  - Run a specific set of tests: `bats ./tests/ssh_tests.bats`
 - **Lint**: `make lint` (runs pre-commit hooks)
 - **Full CI**: `make ci` (Docker-based, tests across Python 3.7–3.14)
 
