@@ -16,9 +16,9 @@ setup() {
     mkdir -p "${TEST_HOME}/.ssh"
     cat >"${TEST_HOME}/.ssh/config" <<EOF
 Host test-ssh-server
-  HostName ${BLARG_SSH_TEST_HOST:-localhost}
-  Port ${BLARG_SSH_TEST_PORT:-2222}
-  User ${BLARG_SSH_TEST_USER:-testuser}
+  HostName ${BLARG_TEST_SSH_HOST:-localhost}
+  Port ${BLARG_TEST_SSH_PORT:-2222}
+  User ${BLARG_TEST_SSH_USER:-testuser}
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   IdentityFile ${TEST_HOME}/.ssh/id_ed25519

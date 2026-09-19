@@ -156,20 +156,19 @@ hello, there\.\.\.
     capture_output ./targets/print_env.bash
     assert_no_stderr
     assert_exit_code 0
-    stdout_regex="$(
-        cat <<EOF
-^BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+
-BLARG_INDENT=-->[[:space:]]
-BLARG_MODULE_DIR=/tmp/blarg-test\.[[:alnum:]]+
-BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]
-BLARG_RUN_DIR=/tmp/[[:print:]]+
-BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets
-BLARG_TARGET_NAME=print_env
-BLARG_TARGET_PATH=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash$
-EOF
-    )"
-    assert_stdout "${stdout_regex}"
-
+    regexes=(
+        'BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+'
+        'BLARG_INDENT=-->[[:space:]]'
+        'BLARG_MODULE_DIR=/tmp/blarg-test\.[[:alnum:]]+'
+        'BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]'
+        'BLARG_RUN_DIR=/tmp/[[:print:]]+'
+        'BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets'
+        'BLARG_TARGET_NAME=print_env'
+        'BLARG_TARGET_PATH=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash'
+    )
+    for r in "${regexes[@]}"; do
+        assert_stdout "${r}"
+    done
 }
 
 @test 'usecase dir - always - executes main target' {

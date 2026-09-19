@@ -4,4 +4,4 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:2222:22"
+      - "127.0.0.1:${BLARG_TEST_SSH_PORT:-2222}:22"
