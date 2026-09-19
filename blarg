@@ -19,7 +19,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, List, IO, Mapping, MutableMapping, Optional
 
 
-VERSION = "0.7.0-rc4"
+VERSION = "0.7.0-rc5"
 
 
 STDLIB = """
@@ -406,7 +406,7 @@ def execute_remote(
     ssh_target: str,
     working_dir: Path,
     script_path: Path,
-    env: MutableMapping[str, str],
+    env: Mapping[str, str],
     verbose: bool,
     dry_run: bool,
 ) -> int:
