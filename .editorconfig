@@ -14,7 +14,7 @@ indent_size = 4
 switch_case_indent = true
 binary_next_line = true
 
-[.{yaml,yml}]
+[*.{yaml,yml}]
 indent_size = 2
 
 [Makefile]
