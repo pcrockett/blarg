@@ -15,7 +15,7 @@ lint:
 	@pre-commit run --all-files
 .PHONY: lint
 
-ci: up
+ci: up lint
 	@bin/python-version-test.sh
 .PHONY: ci
 
