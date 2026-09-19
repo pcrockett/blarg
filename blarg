@@ -402,6 +402,10 @@ class SSHProcess:
         return base + self._ssh_options + [self._remote_target, remote_command]
 
 
+def print_fatal(message: str):
+    print(f"FATAL: {message}", file=sys.stderr)
+
+
 def execute_remote(
     ssh_target: str,
     working_dir: Path,
@@ -413,18 +417,17 @@ def execute_remote(
     resolved_script_path = script_path.resolve()
     resolved_working_dir = working_dir.resolve()
     if not str(resolved_script_path).startswith(str(resolved_working_dir)):
-        print(
-            f"FATAL: Target path {script_path} is outside the project directory {working_dir}",
-            file=sys.stderr,
+        print_fatal(
+            f"Target path {script_path} is outside the project directory {working_dir}"
         )
         return 1
 
     if shutil.which("ssh") is None:
-        print("FATAL: ssh not found", file=sys.stderr)
+        print_fatal("ssh not found")
         return 1
 
     if shutil.which("tar") is None:
-        print("FATAL: tar not found", file=sys.stderr)
+        print_fatal("tar not found")
         return 1
 
     forwarded_args = []
@@ -442,7 +445,7 @@ def execute_remote(
     try:
         shutil.copy2(Path(__file__).resolve(), local_blarg_path)
     except Exception as e:
-        print(f"FATAL: Failed to copy blarg script locally: {e}", file=sys.stderr)
+        print_fatal(f"Failed to copy blarg script locally: {e}")
         return 1
 
     ssh = SSHProcess(ssh_target, env)
@@ -459,13 +462,10 @@ def execute_remote(
         mkdir_status = ssh.start(f"mkdir -m 700 -p {remote_temp_dir}").wait()
 
         if mkdir_status != 0:
-            print(
-                f"FATAL: ssh exited with code {mkdir_status}",
-                file=sys.stderr
-            )
+            print_fatal(f"ssh exited with code {mkdir_status}" )
             return mkdir_status
     except Exception as e:
-        print(f"FATAL: Failed to connect to remote: {e}", file=sys.stderr)
+        print_fatal(f"Failed to connect to remote: {e}")
         return 1
 
     # Stream project to remote via tar over SSH
@@ -498,16 +498,16 @@ def execute_remote(
         _, ssh_error = ssh_proc.communicate()
 
         if tar_exit_code != 0:
-            print(f"FATAL: tar failed with exit code {tar_exit_code}", file=sys.stderr)
+            print_fatal(f"tar failed with exit code {tar_exit_code}")
             return 1
 
         if ssh_proc.returncode != 0:
             error_msg = ssh_error.decode() if ssh_error else "unknown error"
-            print(f"FATAL: SSH extraction failed: {error_msg}", file=sys.stderr)
+            print_fatal(f"SSH extraction failed: {error_msg}")
             return 1
 
     except Exception as e:
-        print(f"FATAL: Failed to upload local project to remote: {e}", file=sys.stderr)
+        print_fatal(f"Failed to upload local project to remote: {e}")
         return 1
 
     remote_working_dir = remote_temp_dir
@@ -521,7 +521,7 @@ def execute_remote(
             .wait()
         )
     except Exception as e:
-        print(f"FATAL: SSH command `{blarg_cmd}` failed: {e}", file=sys.stderr)
+        print_fatal(f"SSH command `{blarg_cmd}` failed: {e}")
         return 1
     finally:
         try:
@@ -577,11 +577,10 @@ def execute_local(
 
     if str(resolved_path) in running_targets:
         stack_seperator = "\n-> "
-        print(
-            f"FATAL: Circular dependency detected at `{resolved_path}`:\n"
+        print_fatal(
+            f"Circular dependency detected at `{resolved_path}`:\n"
             f"{stack_seperator.join(running_targets)}"
-            f"{stack_seperator}{resolved_path}",
-            file=sys.stderr,
+            f"{stack_seperator}{resolved_path}"
         )
         return 1
 
@@ -626,7 +625,7 @@ def main() -> int:
         return 0
 
     if args.ssh and args.dump_src:
-        print("FATAL: --ssh and --dump-src are mutually exclusive", file=sys.stderr)
+        print_fatal("--ssh and --dump-src are mutually exclusive")
         return 1
 
     if not args.script_path:
