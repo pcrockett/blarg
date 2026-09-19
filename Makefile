@@ -28,3 +28,7 @@ ci-shell: up
 install:
 	cp blarg ~/.local/bin
 .PHONY: install
+
+release:
+	./bin/release.sh
+.PHONY: release
