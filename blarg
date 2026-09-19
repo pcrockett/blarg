@@ -376,9 +376,12 @@ class SSHProcess:
         local_control_dir.mkdir(parents=True, exist_ok=True)
 
         self._ssh_options = [
-            "-o", f"ControlPath={local_control_dir}/%C",
-            "-o", "ControlMaster=auto",
-            "-o", "ControlPersist=10",
+            "-o",
+            f"ControlPath={local_control_dir}/%C",
+            "-o",
+            "ControlMaster=auto",
+            "-o",
+            "ControlPersist=10",
         ]
 
     def start(
@@ -389,11 +392,7 @@ class SSHProcess:
         full_command = self._build_ssh_command(remote_command, pty)
         return subprocess.Popen(full_command)
 
-    def send_data(
-        self,
-        remote_command: str,
-        data: IO[Any]
-    ) -> subprocess.Popen:
+    def send_data(self, remote_command: str, data: IO[Any]) -> subprocess.Popen:
         full_command = self._build_ssh_command(remote_command)
         return subprocess.Popen(full_command, stdin=data)
 
@@ -462,7 +461,7 @@ def execute_remote(
         mkdir_status = ssh.start(f"mkdir -m 700 -p {remote_temp_dir}").wait()
 
         if mkdir_status != 0:
-            print_fatal(f"ssh exited with code {mkdir_status}" )
+            print_fatal(f"ssh exited with code {mkdir_status}")
             return mkdir_status
     except Exception as e:
         print_fatal(f"Failed to connect to remote: {e}")
@@ -471,17 +470,17 @@ def execute_remote(
     # Stream project to remote via tar over SSH
     local_tar_bundle_cmd = [
         "tar",
-        "czf", "-",
+        "czf",
+        "-",
         "--exclude=.git",
-        "-C", str(resolved_working_dir),
-        "."
+        "-C",
+        str(resolved_working_dir),
+        ".",
     ]
 
     try:
         tar_proc = subprocess.Popen(
-            local_tar_bundle_cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            local_tar_bundle_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
         if tar_proc.stdout is None:
@@ -511,15 +510,10 @@ def execute_remote(
         return 1
 
     remote_working_dir = remote_temp_dir
-    blarg_cmd = (
-        f'PATH="{remote_temp_dir}/.blarg/bin:${{PATH}}" blarg {" ".join(forwarded_args)}'
-    )
+    blarg_cmd = f'PATH="{remote_temp_dir}/.blarg/bin:${{PATH}}" blarg {" ".join(forwarded_args)}'
 
     try:
-        return (
-            ssh.start(f"cd {remote_working_dir} && {blarg_cmd}", pty=True)
-            .wait()
-        )
+        return ssh.start(f"cd {remote_working_dir} && {blarg_cmd}", pty=True).wait()
     except Exception as e:
         print_fatal(f"SSH command `{blarg_cmd}` failed: {e}")
         return 1
@@ -531,13 +525,13 @@ def execute_remote(
 
 
 def execute_local(
-        working_dir: Path,
-        module_dir: Path,
-        script_path: Path,
-        env: MutableMapping[str, str],
-        verbose: bool,
-        dry_run: bool
-    ):
+    working_dir: Path,
+    module_dir: Path,
+    script_path: Path,
+    env: MutableMapping[str, str],
+    verbose: bool,
+    dry_run: bool,
+):
     resolved_path = script_path.resolve()
     env["BLARG_TARGET_PATH"] = str(resolved_path)
 
@@ -675,6 +669,7 @@ def main() -> int:
             is_verbose,
             args.dry_run,
         )
+
 
 if __name__ == "__main__":
     exit_code = main()
