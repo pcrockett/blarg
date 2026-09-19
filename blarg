@@ -400,8 +400,9 @@ class SSHProcess:
         return base + self._ssh_options + [self._remote_target, remote_command]
 
 
-def print_fatal(message: str):
+def fatal_exit_code(message: str) -> int:
     print(f"FATAL: {message}", file=sys.stderr)
+    return 1
 
 
 def execute_remote(
@@ -415,18 +416,15 @@ def execute_remote(
     resolved_script_path = script_path.resolve()
     resolved_working_dir = working_dir.resolve()
     if not str(resolved_script_path).startswith(str(resolved_working_dir)):
-        print_fatal(
+        return fatal_exit_code(
             f"Target path {script_path} is outside the project directory {working_dir}"
         )
-        return 1
 
     if shutil.which("ssh") is None:
-        print_fatal("ssh not found")
-        return 1
+        return fatal_exit_code("ssh not found")
 
     if shutil.which("tar") is None:
-        print_fatal("tar not found")
-        return 1
+        return fatal_exit_code("tar not found")
 
     forwarded_args = []
     if verbose:
@@ -443,8 +441,7 @@ def execute_remote(
     try:
         shutil.copy2(Path(__file__).resolve(), local_blarg_path)
     except Exception as e:  # noqa BLE001 -- we are exiting the program
-        print_fatal(f"Failed to copy blarg script locally: {e}")
-        return 1
+        return fatal_exit_code(f"Failed to copy blarg script locally: {e}")
 
     ssh = SSHProcess(ssh_target, env)
 
@@ -458,13 +455,10 @@ def execute_remote(
     try:
         # mode 700 equivalent to `u=rwx,g=,o=`
         mkdir_status = ssh.start(f"mkdir -m 700 -p {remote_temp_dir}").wait()
-
         if mkdir_status != 0:
-            print_fatal(f"ssh exited with code {mkdir_status}")
-            return mkdir_status
+            return fatal_exit_code(f"ssh exited with code {mkdir_status}")
     except Exception as e:  # noqa BLE001 -- we are exiting the program
-        print_fatal(f"Failed to connect to remote: {e}")
-        return 1
+        return fatal_exit_code(f"Failed to connect to remote: {e}")
 
     # Stream project to remote via tar over SSH
     local_tar_bundle_cmd = [
@@ -496,17 +490,14 @@ def execute_remote(
         _, ssh_error = ssh_proc.communicate()
 
         if tar_exit_code != 0:
-            print_fatal(f"tar failed with exit code {tar_exit_code}")
-            return 1
+            return fatal_exit_code(f"tar failed with exit code {tar_exit_code}")
 
         if ssh_proc.returncode != 0:
             error_msg = ssh_error.decode() if ssh_error else "unknown error"
-            print_fatal(f"SSH extraction failed: {error_msg}")
-            return 1
+            return fatal_exit_code(f"SSH extraction failed: {error_msg}")
 
     except Exception as e:  # noqa BLE001 -- we are exiting the program
-        print_fatal(f"Failed to upload local project to remote: {e}")
-        return 1
+        return fatal_exit_code(f"Failed to upload local project to remote: {e}")
 
     remote_working_dir = remote_temp_dir
     blarg_cmd = f'PATH="{remote_temp_dir}/.blarg/bin:${{PATH}}" blarg {" ".join(forwarded_args)}'
@@ -514,8 +505,7 @@ def execute_remote(
     try:
         return ssh.start(f"cd {remote_working_dir} && {blarg_cmd}", pty=True).wait()
     except Exception as e:  # noqa BLE001 -- we are exiting the program
-        print_fatal(f"SSH command `{blarg_cmd}` failed: {e}")
-        return 1
+        return fatal_exit_code(f"SSH command `{blarg_cmd}` failed: {e}")
     finally:
         try:
             ssh.start(f"rm -rf {remote_temp_dir}").wait()
@@ -570,12 +560,11 @@ def execute_local(
 
     if str(resolved_path) in running_targets:
         stack_seperator = "\n-> "
-        print_fatal(
+        return fatal_exit_code(
             f"Circular dependency detected at `{resolved_path}`:\n"
             f"{stack_seperator.join(running_targets)}"
             f"{stack_seperator}{resolved_path}"
         )
-        return 1
 
     running_targets.append(str(resolved_path))
     env["BLARG_RUNNING_TARGETS"] = json.dumps(running_targets)
@@ -618,8 +607,7 @@ def main() -> int:
         return 0
 
     if args.ssh and args.dump_src:
-        print_fatal("--ssh and --dump-src are mutually exclusive")
-        return 1
+        return fatal_exit_code("--ssh and --dump-src are mutually exclusive")
 
     if not args.script_path:
         CliParser().print_help()
