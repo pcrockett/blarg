@@ -1,0 +1,6 @@
+target-version = "py37"  # oldest python we support
+
+[lint]
+ignore = [
+    "PLW1510"  # we use subprocess.run without check=True because we handle the exit code ourselves
+]

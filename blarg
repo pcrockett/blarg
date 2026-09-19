@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import hashlib
 import json
@@ -9,15 +11,12 @@ import shlex
 import shutil
 import subprocess
 import sys
-
-
 from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import rmtree
 from tempfile import TemporaryDirectory
-from typing import Any, List, IO, Mapping, MutableMapping, Optional
-
+from typing import IO, Any, Mapping, MutableMapping
 
 VERSION = "0.7.0"
 
@@ -201,12 +200,12 @@ __BLARG_MAIN__
 
 @dataclass
 class CliArgs:
-    script_path: Optional[Path]
+    script_path: Path | None
     dump_src: bool
     version: bool
     verbose: bool
     dry_run: bool
-    ssh: Optional[str] = None
+    ssh: str | None = None
 
 
 class CliParser(argparse.ArgumentParser):
@@ -255,7 +254,7 @@ def parse_args() -> CliArgs:
     )
 
 
-def list_dir_if_exists(dir_path: Path) -> List[Path]:
+def list_dir_if_exists(dir_path: Path) -> list[Path]:
     try:
         return sorted([p.resolve() for p in dir_path.iterdir() if not p.is_dir()])
     except (FileNotFoundError, NotADirectoryError):
@@ -338,7 +337,7 @@ class ExternalModule:
 
 @dataclass
 class BlargConfig:
-    modules: List[ExternalModule]
+    modules: list[ExternalModule]
 
 
 def parse_config(config_path: Path) -> BlargConfig:
@@ -346,7 +345,7 @@ def parse_config(config_path: Path) -> BlargConfig:
     config = ConfigParser()
     config.read(config_path)
 
-    modules: List[ExternalModule] = []
+    modules: list[ExternalModule] = []
     section: str
     for section in config.sections():
         (_, _, module_id) = section.partition("module.")
@@ -396,7 +395,7 @@ class SSHProcess:
         full_command = self._build_ssh_command(remote_command)
         return subprocess.Popen(full_command, stdin=data)
 
-    def _build_ssh_command(self, remote_command: str, pty: bool = False) -> List[str]:
+    def _build_ssh_command(self, remote_command: str, pty: bool = False) -> list[str]:
         base = ["ssh", "-t"] if pty else ["ssh"]
         return base + self._ssh_options + [self._remote_target, remote_command]
 
@@ -443,7 +442,7 @@ def execute_remote(
 
     try:
         shutil.copy2(Path(__file__).resolve(), local_blarg_path)
-    except Exception as e:
+    except Exception as e:  # noqa BLE001 -- we are exiting the program
         print_fatal(f"Failed to copy blarg script locally: {e}")
         return 1
 
@@ -463,7 +462,7 @@ def execute_remote(
         if mkdir_status != 0:
             print_fatal(f"ssh exited with code {mkdir_status}")
             return mkdir_status
-    except Exception as e:
+    except Exception as e:  # noqa BLE001 -- we are exiting the program
         print_fatal(f"Failed to connect to remote: {e}")
         return 1
 
@@ -505,7 +504,7 @@ def execute_remote(
             print_fatal(f"SSH extraction failed: {error_msg}")
             return 1
 
-    except Exception as e:
+    except Exception as e:  # noqa BLE001 -- we are exiting the program
         print_fatal(f"Failed to upload local project to remote: {e}")
         return 1
 
@@ -514,14 +513,14 @@ def execute_remote(
 
     try:
         return ssh.start(f"cd {remote_working_dir} && {blarg_cmd}", pty=True).wait()
-    except Exception as e:
+    except Exception as e:  # noqa BLE001 -- we are exiting the program
         print_fatal(f"SSH command `{blarg_cmd}` failed: {e}")
         return 1
     finally:
         try:
             ssh.start(f"rm -rf {remote_temp_dir}").wait()
-        except Exception:
-            pass  # Ignore cleanup errors, it's all in a temp dir anyway
+        except Exception as e:  # noqa BLE001 -- we are exiting the program
+            print(f"WARNING: cleanup command failed with {e}", file=sys.stderr)
 
 
 def execute_local(
@@ -673,4 +672,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     exit_code = main()
-    quit(exit_code)
+    sys.exit(exit_code)

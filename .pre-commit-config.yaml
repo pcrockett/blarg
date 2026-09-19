@@ -63,3 +63,10 @@ repos:
         types:
           - python
         args: [format]
+      - id: ruff
+        name: lint python files
+        entry: ruff
+        language: system
+        types:
+          - python
+        args: [check]
