@@ -8,18 +8,19 @@ SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 # hadolint ignore=DL3018
 RUN apk add --no-cache openssh-server openssh-client sudo python3 bash
 
+ARG TEST_USER="testuser"
 RUN \
-adduser -D -s /bin/ash testuser && \
-echo 'testuser:testuser' | chpasswd && \
-echo 'testuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
-mkdir -p /home/testuser/.ssh && \
-chmod 700 /home/testuser/.ssh && \
-chown testuser:testuser /home/testuser/.ssh
+adduser -D -s /bin/ash "${TEST_USER}" && \
+echo "${TEST_USER}:${TEST_USER}" | chpasswd && \
+echo "${TEST_USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+mkdir -p "/home/${TEST_USER}/.ssh" && \
+chmod 700 "/home/${TEST_USER}/.ssh" && \
+chown "${TEST_USER}:${TEST_USER}" "/home/${TEST_USER}/.ssh"
 
-COPY test_key.pub /home/testuser/.ssh/authorized_keys
+COPY test_key.pub /home/${TEST_USER}/.ssh/authorized_keys
 RUN \
-chmod 600 /home/testuser/.ssh/authorized_keys && \
-chown testuser:testuser /home/testuser/.ssh/authorized_keys && \
+chmod 600 "/home/${TEST_USER}/.ssh/authorized_keys" && \
+chown "${TEST_USER}:${TEST_USER}" "/home/${TEST_USER}/.ssh/authorized_keys" && \
 sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
 sed -i 's/#AuthorizedKeysFile/AuthorizedKeysFile/' /etc/ssh/sshd_config && \
 sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \

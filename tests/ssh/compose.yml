@@ -3,5 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        TEST_USER: ${BLARG_TEST_SSH_USER:-testuser}
     ports:
       - "127.0.0.1:${BLARG_TEST_SSH_PORT:-2222}:22"
