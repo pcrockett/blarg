@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import os
@@ -208,52 +207,45 @@ class CliArgs:
     ssh: str | None = None
 
 
-class CliParser(argparse.ArgumentParser):
-    def __init__(self):
-        # TODO: replace ArgumentParser. it's an order of magnitude slower than even
-        # generate_script(), which is reading a bunch of files from disk.
+def parse_args(cli_args: list[str]) -> CliArgs:
+    verbose = False
+    version = False
+    dump = False
+    dry = False
+    ssh_target = None
+    script_path = None
+    skip_arg = False
+    for i in range(1, len(cli_args)):
+        if skip_arg:
+            skip_arg = False
+            continue
 
-        super().__init__(
-            "blarg",
-            description="Execute bash target files <https://github.com/pcrockett/blarg>",
-        )
-        self.add_argument(
-            "script_path", help="script file to execute", default=None, nargs="?"
-        )
-        self.add_argument(
-            "--dump-src",
-            "-d",
-            help=(
-                "output the full source that would be executed "
-                "by Bash instead of running"
-            ),
-            action="store_true",
-        )
-        self.add_argument(
-            "--version", help="display version number", action="store_true"
-        )
-        self.add_argument(
-            "--verbose", "-v", help="display verbose output", action="store_true"
-        )
-        self.add_argument(
-            "--dry-run", "-r", help="don't apply targets", action="store_true"
-        )
-        self.add_argument(
-            "--ssh",
-            help="Execute on remote machine via SSH",
-            metavar="SSH_TARGET",
-        )
+        arg = cli_args[i]
+        if arg in ("--verbose", "-v"):
+            verbose = True
+        elif arg == "--version":
+            version = True
+        elif arg in ("--dump-src", "-d"):
+            dump = True
+        elif arg in ("--dry-run", "-r"):
+            dry = True
+        elif arg == "--ssh":
+            if i >= len(cli_args) - 1:
+                raise ValueError("No SSH target was specified.")
+            ssh_target = cli_args[i + 1]
+            skip_arg = True
+        elif script_path is None:
+            script_path = arg
+        else:
+            raise ValueError(f"Unrecognized argument: `{arg}`")
 
-
-def parse_args() -> CliArgs:
-    args = CliParser().parse_args()
     return CliArgs(
-        Path(args.script_path) if args.script_path else None,
-        args.dump_src,
-        args.version,
-        args.verbose,
-        args.dry_run,
-        args.ssh,
+        Path(script_path) if script_path else None,
+        dump,
+        version,
+        verbose,
+        dry,
+        ssh_target,
     )
 
 
@@ -603,7 +595,7 @@ def execute_local(
 
 
 def main() -> int:
-    args = parse_args()
+    args = parse_args(sys.argv)
 
     if args.version:
         print(f"blarg version {VERSION}")
@@ -613,8 +605,7 @@ def main() -> int:
         return fatal_exit_code("--ssh and --dump-src are mutually exclusive")
 
     if not args.script_path:
-        CliParser().print_help()
-        return 0
+        raise ValueError("Not implemented yet.")
 
     script_path = args.script_path
     if script_path.is_dir():
