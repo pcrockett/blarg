@@ -210,6 +210,9 @@ class CliArgs:
 
 class CliParser(argparse.ArgumentParser):
     def __init__(self):
+        # TODO: replace ArgumentParser. it's an order of magnitude slower than even
+        # generate_script(), which is reading a bunch of files from disk.
+
         super().__init__(
             "blarg",
             description="Execute bash target files <https://github.com/pcrockett/blarg>",
