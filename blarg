@@ -199,6 +199,7 @@ __BLARG_MAIN__
 
 @dataclass
 class CliArgs:
+    help: bool
     script_path: Path | None
     dump_src: bool
     version: bool
@@ -207,7 +208,28 @@ class CliArgs:
     ssh: str | None = None
 
 
+def help() -> str:
+    # TODO: disable ansi when not a tty
+    return """
+\033[1;34musage: \033[0m\033[1;35mblarg\033[0m [\033[32m-h\033[0m] [\033[36m--dump-src\033[0m] [\033[36m--version\033[0m] [\033[36m--verbose\033[0m] [\033[36m--dry-run\033[0m] [\033[36m--ssh \033[33mSSH_TARGET\033[0m] \033[32m[script_path]\033[0m
+
+Execute bash target files <https://github.com/pcrockett/blarg>
+
+\033[1;34mpositional arguments:\033[0m
+  \033[1;32mscript_path\033[0m       script file to execute
+
+\033[1;34moptions:\033[0m
+  \033[1;36m--help\033[0m, \033[1;32m-h\033[0m        show this help message and exit
+  \033[1;36m--dump-src\033[0m, \033[1;32m-d\033[0m    output the full source that would be executed by Bash instead of running
+  \033[1;36m--version\033[0m         display version number
+  \033[1;36m--verbose\033[0m, \033[1;32m-v\033[0m     display verbose output
+  \033[1;36m--dry-run\033[0m, \033[1;32m-r\033[0m     don't apply targets
+  \033[1;36m--ssh\033[0m \033[1;33mSSH_TARGET\033[0m  Execute on remote machine via SSH
+"""
+
+
 def parse_args(cli_args: list[str]) -> CliArgs:
+    help = False
     verbose = False
     version = False
     dump = False
@@ -221,7 +243,9 @@ def parse_args(cli_args: list[str]) -> CliArgs:
             continue
 
         arg = cli_args[i]
-        if arg in ("--verbose", "-v"):
+        if arg in ("--help", "-h"):
+            help = True
+        elif arg in ("--verbose", "-v"):
             verbose = True
         elif arg == "--version":
             version = True
@@ -240,6 +264,7 @@ def parse_args(cli_args: list[str]) -> CliArgs:
             raise ValueError(f"Unrecognized argument: `{arg}`")
 
     return CliArgs(
+        help,
         Path(script_path) if script_path else None,
         dump,
         version,
@@ -604,8 +629,9 @@ def main() -> int:
     if args.ssh and args.dump_src:
         return fatal_exit_code("--ssh and --dump-src are mutually exclusive")
 
-    if not args.script_path:
-        raise ValueError("Not implemented yet.")
+    if not args.script_path or args.help:
+        print(help())
+        return 0
 
     script_path = args.script_path
     if script_path.is_dir():
