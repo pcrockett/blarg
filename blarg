@@ -208,23 +208,55 @@ class CliArgs:
     ssh: str | None = None
 
 
+def ansi(code: str, text: str) -> str:
+    if sys.stdout.isatty():
+        return f"\033[{code}m{text}\033[0m"
+    return text
+
+
+BOLD = "1"
+
+
+def red(text: str, style: str | None = None) -> str:
+    return ansi("31", text) if style is None else ansi(f"{style};31", text)
+
+
+def green(text: str, style: str | None = None) -> str:
+    return ansi("32", text) if style is None else ansi(f"{style};32", text)
+
+
+def yellow(text: str, style: str | None = None) -> str:
+    return ansi("33", text) if style is None else ansi(f"{style};33", text)
+
+
+def blue(text: str, style: str | None = None) -> str:
+    return ansi("34", text) if style is None else ansi(f"{style};34", text)
+
+
+def magenta(text: str, style: str | None = None) -> str:
+    return ansi("35", text) if style is None else ansi(f"{style};35", text)
+
+
+def cyan(text: str, style: str | None = None) -> str:
+    return ansi("36", text) if style is None else ansi(f"{style};36", text)
+
+
 def help() -> str:
-    # TODO: disable ansi when not a tty
-    return """
-\033[1;34musage: \033[0m\033[1;35mblarg\033[0m [\033[32m-h\033[0m] [\033[36m--dump-src\033[0m] [\033[36m--version\033[0m] [\033[36m--verbose\033[0m] [\033[36m--dry-run\033[0m] [\033[36m--ssh \033[33mSSH_TARGET\033[0m] \033[32m[script_path]\033[0m
+    # ripped ansi style off `argparse`
+    return f"""{blue("usage:", BOLD)} {magenta("blarg", BOLD)} [{cyan("--help")}] [{cyan("--dump-src")}] [{cyan("--version")}] [{cyan("--verbose")}] [{cyan("--dry-run")}] [{cyan("--ssh")} {yellow("SSH_TARGET")}] {green("[script_path]")}
 
 Execute bash target files <https://github.com/pcrockett/blarg>
 
-\033[1;34mpositional arguments:\033[0m
-  \033[1;32mscript_path\033[0m       script file to execute
+{blue("positional arguments:", BOLD)}
+  {green("script_path")}       script file to execute
 
-\033[1;34moptions:\033[0m
-  \033[1;36m--help\033[0m, \033[1;32m-h\033[0m        show this help message and exit
-  \033[1;36m--dump-src\033[0m, \033[1;32m-d\033[0m    output the full source that would be executed by Bash instead of running
-  \033[1;36m--version\033[0m         display version number
-  \033[1;36m--verbose\033[0m, \033[1;32m-v\033[0m     display verbose output
-  \033[1;36m--dry-run\033[0m, \033[1;32m-r\033[0m     don't apply targets
-  \033[1;36m--ssh\033[0m \033[1;33mSSH_TARGET\033[0m  Execute on remote machine via SSH
+{blue("options:", BOLD)}
+  {cyan("--help", BOLD)}, {green("-h", BOLD)}        show this help message and exit
+  {cyan("--dump-src", BOLD)}, {green("-d", BOLD)}    output the full source that would be executed by Bash instead of running
+  {cyan("--version", BOLD)}         display version number
+  {cyan("--verbose", BOLD)}, {green("-v", BOLD)}     display verbose output
+  {cyan("--dry-run", BOLD)}, {green("-r", BOLD)}     don't apply targets
+  {cyan("--ssh", BOLD)} {yellow("SSH_TARGET", BOLD)}  Execute on remote machine via SSH
 """
 
 
