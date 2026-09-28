@@ -243,20 +243,26 @@ def cyan(text: str, style: str | None = None) -> str:
 
 def help() -> str:
     # ripped ansi style off `argparse`
-    return f"""{blue("usage:", BOLD)} {magenta("blarg", BOLD)} [{cyan("--help")}] [{cyan("--dump-src")}] [{cyan("--version")}] [{cyan("--verbose")}] [{cyan("--dry-run")}] [{cyan("--ssh")} {yellow("SSH_TARGET")}] {green("[script_path]")}
+    section = blue
+    long_opt = cyan
+    short_opt = green
+    opt_value = yellow
+    positional_arg = green
+
+    return f"""{section("usage:", BOLD)} {magenta("blarg", BOLD)} [{long_opt("--help")}] [{long_opt("--dump-src")}] [{long_opt("--version")}] [{long_opt("--verbose")}] [{long_opt("--dry-run")}] [{long_opt("--ssh")} {opt_value("SSH_TARGET")}] {positional_arg("[script_path]")}
 
 Execute bash target files <https://github.com/pcrockett/blarg>
 
-{blue("positional arguments:", BOLD)}
-  {green("script_path")}       script file to execute
+{section("positional arguments:", BOLD)}
+  {positional_arg("script_path")}       script file to execute
 
-{blue("options:", BOLD)}
-  {cyan("--help", BOLD)}, {green("-h", BOLD)}        show this help message and exit
-  {cyan("--dump-src", BOLD)}, {green("-d", BOLD)}    output the full source that would be executed by Bash instead of running
-  {cyan("--version", BOLD)}         display version number
-  {cyan("--verbose", BOLD)}, {green("-v", BOLD)}     display verbose output
-  {cyan("--dry-run", BOLD)}, {green("-r", BOLD)}     don't apply targets
-  {cyan("--ssh", BOLD)} {yellow("SSH_TARGET", BOLD)}  Execute on remote machine via SSH
+{section("options:", BOLD)}
+  {long_opt("--help", BOLD)}, {short_opt("-h", BOLD)}        show this help message and exit
+  {long_opt("--dump-src", BOLD)}, {short_opt("-d", BOLD)}    output the full source that would be executed by Bash instead of running
+  {long_opt("--version", BOLD)}         display version number
+  {long_opt("--verbose", BOLD)}, {short_opt("-v", BOLD)}     display verbose output
+  {long_opt("--dry-run", BOLD)}, {short_opt("-r", BOLD)}     don't apply targets
+  {long_opt("--ssh", BOLD)} {opt_value("SSH_TARGET", BOLD)}  Execute on remote machine via SSH
 """
 
 
