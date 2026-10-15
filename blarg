@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import os
@@ -200,6 +199,7 @@ __BLARG_MAIN__
 
 @dataclass
 class CliArgs:
+    help: bool
     script_path: Path | None
     dump_src: bool
     version: bool
@@ -208,52 +208,107 @@ class CliArgs:
     ssh: str | None = None
 
 
-class CliParser(argparse.ArgumentParser):
-    def __init__(self):
-        # TODO: replace ArgumentParser. it's an order of magnitude slower than even
-        # generate_script(), which is reading a bunch of files from disk.
-
-        super().__init__(
-            "blarg",
-            description="Execute bash target files <https://github.com/pcrockett/blarg>",
-        )
-        self.add_argument(
-            "script_path", help="script file to execute", default=None, nargs="?"
-        )
-        self.add_argument(
-            "--dump-src",
-            "-d",
-            help=(
-                "output the full source that would be executed "
-                "by Bash instead of running"
-            ),
-            action="store_true",
-        )
-        self.add_argument(
-            "--version", help="display version number", action="store_true"
-        )
-        self.add_argument(
-            "--verbose", "-v", help="display verbose output", action="store_true"
-        )
-        self.add_argument(
-            "--dry-run", "-r", help="don't apply targets", action="store_true"
-        )
-        self.add_argument(
-            "--ssh",
-            help="Execute on remote machine via SSH",
-            metavar="SSH_TARGET",
-        )
+def ansi(code: str, text: str) -> str:
+    if sys.stdout.isatty():
+        return f"\033[{code}m{text}\033[0m"
+    return text
 
 
-def parse_args() -> CliArgs:
-    args = CliParser().parse_args()
+BOLD = "1"
+
+
+def red(text: str, style: str | None = None) -> str:
+    return ansi("31", text) if style is None else ansi(f"{style};31", text)
+
+
+def green(text: str, style: str | None = None) -> str:
+    return ansi("32", text) if style is None else ansi(f"{style};32", text)
+
+
+def yellow(text: str, style: str | None = None) -> str:
+    return ansi("33", text) if style is None else ansi(f"{style};33", text)
+
+
+def blue(text: str, style: str | None = None) -> str:
+    return ansi("34", text) if style is None else ansi(f"{style};34", text)
+
+
+def magenta(text: str, style: str | None = None) -> str:
+    return ansi("35", text) if style is None else ansi(f"{style};35", text)
+
+
+def cyan(text: str, style: str | None = None) -> str:
+    return ansi("36", text) if style is None else ansi(f"{style};36", text)
+
+
+def help() -> str:
+    # ripped ansi style off `argparse`
+    section = blue
+    long_opt = cyan
+    short_opt = green
+    opt_value = yellow
+    positional_arg = green
+
+    return f"""{section("usage:", BOLD)} {magenta("blarg", BOLD)} [{long_opt("--help")}] [{long_opt("--dump-src")}] [{long_opt("--version")}] [{long_opt("--verbose")}] [{long_opt("--dry-run")}] [{long_opt("--ssh")} {opt_value("SSH_TARGET")}] {positional_arg("[script_path]")}
+
+Execute bash target files <https://github.com/pcrockett/blarg>
+
+{section("positional arguments:", BOLD)}
+  {positional_arg("script_path")}       script file to execute
+
+{section("options:", BOLD)}
+  {long_opt("--help", BOLD)}, {short_opt("-h", BOLD)}        show this help message and exit
+  {long_opt("--dump-src", BOLD)}, {short_opt("-d", BOLD)}    output the full source that would be executed by Bash instead of running
+  {long_opt("--version", BOLD)}         display version number
+  {long_opt("--verbose", BOLD)}, {short_opt("-v", BOLD)}     display verbose output
+  {long_opt("--dry-run", BOLD)}, {short_opt("-r", BOLD)}     don't apply targets
+  {long_opt("--ssh", BOLD)} {opt_value("SSH_TARGET", BOLD)}  Execute on remote machine via SSH
+"""
+
+
+def parse_args(cli_args: list[str]) -> CliArgs:
+    help = False
+    verbose = False
+    version = False
+    dump = False
+    dry = False
+    ssh_target = None
+    script_path = None
+    skip_arg = False
+    for i in range(1, len(cli_args)):
+        if skip_arg:
+            skip_arg = False
+            continue
+
+        arg = cli_args[i]
+        if arg in ("--help", "-h"):
+            help = True
+        elif arg in ("--verbose", "-v"):
+            verbose = True
+        elif arg == "--version":
+            version = True
+        elif arg in ("--dump-src", "-d"):
+            dump = True
+        elif arg in ("--dry-run", "-r"):
+            dry = True
+        elif arg == "--ssh":
+            if i >= len(cli_args) - 1:
+                raise ValueError("No SSH target was specified.")
+            ssh_target = cli_args[i + 1]
+            skip_arg = True
+        elif script_path is None:
+            script_path = arg
+        else:
+            raise ValueError(f"Unrecognized argument: `{arg}`")
+
     return CliArgs(
-        Path(args.script_path) if args.script_path else None,
-        args.dump_src,
-        args.version,
-        args.verbose,
-        args.dry_run,
-        args.ssh,
+        help,
+        Path(script_path) if script_path else None,
+        dump,
+        version,
+        verbose,
+        dry,
+        ssh_target,
     )
 
 
@@ -603,7 +658,7 @@ def execute_local(
 
 
 def main() -> int:
-    args = parse_args()
+    args = parse_args(sys.argv)
 
     if args.version:
         print(f"blarg version {VERSION}")
@@ -612,8 +667,8 @@ def main() -> int:
     if args.ssh and args.dump_src:
         return fatal_exit_code("--ssh and --dump-src are mutually exclusive")
 
-    if not args.script_path:
-        CliParser().print_help()
+    if not args.script_path or args.help:
+        print(help())
         return 0
 
     script_path = args.script_path
