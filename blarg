@@ -400,7 +400,12 @@ class SSHProcess:
 
     def _build_ssh_command(self, remote_command: str, pty: bool = False) -> list[str]:
         base = ["ssh", "-t"] if pty else ["ssh"]
-        return base + self._ssh_options + [self._remote_target, remote_command]
+        # the remote user's login shell may not be POSIX-compatible (e.g. fish), and
+        # our command strings rely on POSIX syntax (`${VAR:-default}`, `VAR=value cmd`).
+        # always invoke bash explicitly: the login shell only has to understand
+        # `bash -c '<quoted string>'`, which any shell can parse.
+        bash_command = f"bash -c {shlex.quote(remote_command)}"
+        return base + self._ssh_options + [self._remote_target, bash_command]
 
 
 def fatal_exit_code(message: str) -> int:
@@ -448,8 +453,8 @@ def execute_remote(
 
     ssh = SSHProcess(ssh_target, env)
 
-    # temp dir string intentionally unresolved, expecting the remote shell to handle
-    # variable expansion etc.
+    # temp dir string intentionally unresolved, expecting the remote bash process to
+    # handle variable expansion etc.
     #
     # safe since i control all the inputs, and shell variable expansion should handle
     # any craziness that might be hiding in TMPDIR env variable.
