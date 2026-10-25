@@ -23,6 +23,15 @@ Host test-ssh-server
   UserKnownHostsFile /dev/null
   IdentityFile ${TEST_HOME}/.ssh/id_ed25519
   LogLevel ERROR
+
+Host test-ssh-server-fish
+  HostName ${BLARG_TEST_SSH_HOST:-localhost}
+  Port ${BLARG_TEST_SSH_PORT:-2222}
+  User ${BLARG_TEST_SSH_FISH_USER:-fishuser}
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  IdentityFile ${TEST_HOME}/.ssh/id_ed25519
+  LogLevel ERROR
 EOF
     cp "${REPO_HOME}/tests/ssh/test_key" "${TEST_HOME}/.ssh/id_ed25519"
     chmod 600 "${TEST_HOME}/.ssh/config" "${TEST_HOME}/.ssh/id_ed25519"

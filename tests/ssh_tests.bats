@@ -9,6 +9,12 @@ blarg_ssh() {
     blarg --ssh test-ssh-server "$@" </dev/null
 }
 
+blarg_ssh_fish() {
+    # same as `blarg_ssh`, but targets a remote user whose default shell is fish.
+    # this ensures blarg doesn't rely on the remote shell being POSIX-compatible.
+    blarg --ssh test-ssh-server-fish "$@" </dev/null
+}
+
 @test 'ssh - successful target - success' {
     use_target simple_apply
     capture_output blarg_ssh targets/simple_apply.bash
@@ -124,5 +130,31 @@ EOF
     assert_stderr 'Cloning into'
     assert_stdout '^external target output
 main target done$'
+    assert_exit_code 0
+}
+
+@test 'ssh - remote default shell is fish - success' {
+    use_target simple_apply
+    capture_output blarg_ssh_fish targets/simple_apply.bash
+    assert_no_stderr
+    assert_stdout '^hi$'
+    assert_exit_code 0
+}
+
+@test 'ssh - fish shell failure - failure propagates' {
+    use_target panic
+    capture_output blarg_ssh_fish targets/panic.bash
+    assert_stderr '^FATAL: OMG panic!
+FATAL: panic\.apply\(\) returned with code 1\.$'
+    assert_no_stdout
+    assert_exit_code 1
+}
+
+@test 'ssh - fish shell crazy target name - success' {
+    use_target simple_apply
+    mv targets/simple_apply.bash "targets/simple'apply.bash"
+    capture_output blarg_ssh_fish "targets/simple'apply.bash"
+    assert_no_stderr
+    assert_stdout '^hi$'
     assert_exit_code 0
 }
