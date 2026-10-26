@@ -81,3 +81,10 @@ dependencies (which are found on almost every Linux distribution out-of-the-box)
 3. It should be feature-complete, yet allow developers to add whatever additional
    features they need via Bash (or by creating a fork). Creating and maintaining a fork
    all by yourself should be simple.
+
+## Blarg is niche. Will it AI?
+
+Modern AI models are really good at Bash and Python, as well as reading the `blarg`
+script to find out how it works. I use `blarg` with AI extensively, especially to work
+on my personal [AI sandbox](https://github.com/pcrockett/ai-sandbox) (and the
+[homelab it runs on](https://github.com/pcrockett/homelab-vmhost)).
