@@ -3,9 +3,14 @@ actionlint = "latest"
 bats = "latest"
 hadolint = "latest"
 pre-commit = "latest"
+python = ["3.14", "3.13", "3.12", "3.11", "3.10", "3.9", "3.8", "3.7"]
 ruff = "latest"
 shellcheck = "latest"
 shfmt = "latest"
 uv = "latest"
 yamlfmt = "latest"
 yamllint = "latest"
+
+[settings]
+lockfile_platforms = ["linux-x64", "linux-x64-musl"]
+python.github_attestations = false  # old pythons don't have attestations
