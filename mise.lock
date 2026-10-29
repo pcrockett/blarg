@@ -168,11 +168,6 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 checksum = "sha256:fcddfd3f1090833e1f3106be021809630008b53026bc96dcaab2986625db27fa"
 url = "https://github.com/astral-sh/python-build-standalone/releases/download/20241002/cpython-3.8.20+20241002-x86_64-unknown-linux-musl-install_only_stripped.tar.gz"
 
-[[tools.python]]
-version = "3.7.17"
-backend = "core:python"
-specifiers = ["3.7"]
-
 [[tools.ruff]]
 version = "0.16.7"
 backend = "aqua:astral-sh/ruff"
