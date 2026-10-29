@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-set -Eeuo pipefail
+set -euo pipefail
 
 versions=(
-    3.7
     3.8
     3.9
     3.10
@@ -11,6 +10,7 @@ versions=(
     3.12
     3.13
     3.14
+    3.15
 )
 
 main() {
@@ -18,17 +18,7 @@ main() {
         versions=("${@}")
     fi
     for v in "${versions[@]}"; do
-        if [ "${SKIP_BLARG_DOCKER_BUILD:-}" == "" ]; then
-            docker build \
-                --build-arg "PYTHON_VERSION=${v}" \
-                --tag "blarg-ci:${v}" \
-                .
-        fi
-        docker run \
-            --rm \
-            --mount "type=bind,source=.,target=/app,readonly" \
-            --network host \
-            "blarg-ci:${v}"
+        mise exec "python@${v}" -- make test
     done
 }
 

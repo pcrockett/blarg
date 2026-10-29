@@ -19,12 +19,6 @@ ci: up lint
 	@bin/python-version-test.sh
 .PHONY: ci
 
-ci-shell: up
-	@docker run --rm -it \
-		--mount "type=bind,source=.,target=/app,readonly" \
-		"blarg-ci:3.14" /bin/bash
-.PHONY: ci-shell
-
 install:
 	cp blarg ~/.local/bin
 .PHONY: install
