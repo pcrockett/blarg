@@ -3,7 +3,6 @@
 set -euo pipefail
 
 versions=(
-    3.7
     3.8
     3.9
     3.10
