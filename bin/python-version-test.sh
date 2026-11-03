@@ -14,12 +14,12 @@ versions=(
 )
 
 main() {
-    if [ "${#}" -gt 0 ]; then
-        versions=("${@}")
+    if [ "$#" -gt 0 ]; then
+        versions=("$@")
     fi
     for v in "${versions[@]}"; do
         mise exec "python@${v}" -- make test
     done
 }
 
-main "${@}"
+main "$@"

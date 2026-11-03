@@ -50,7 +50,7 @@ fail() {
 
 use_target() {
     mkdir --parent "${TEST_CWD}/targets"
-    for t in "${@}"; do
+    for t in "$@"; do
         local src_path="${REPO_HOME}/tests/targets/${t}"
         if [ -d "${src_path}" ]; then
             cp -r "${src_path}" "${TEST_CWD}/targets"
@@ -78,7 +78,7 @@ capture_output() {
     local stderr_file stdout_file
     stderr_file="$(mktemp)"
     stdout_file="$(mktemp)"
-    capture_exit_code "${@}" \
+    capture_exit_code "$@" \
         >"${stdout_file}" \
         2>"${stderr_file}"
     TEST_STDOUT="$(cat "${stdout_file}")"
@@ -88,7 +88,7 @@ capture_output() {
 
 # shellcheck disable=SC2034  # this function returns data via variables
 capture_exit_code() {
-    if "${@}"; then
+    if "$@"; then
         TEST_EXIT_CODE=0
     else
         TEST_EXIT_CODE=$?
