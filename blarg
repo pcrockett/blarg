@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
+# blarg re-execs itself as a new Python process for every target, so import
+# time is paid once per target: keep top-level imports lean and import the rest
+# lazily where they're used.
 import hashlib
 import json
 import os
 import re
-import secrets
-import shlex
-import shutil
 import subprocess
 import sys
-from configparser import ConfigParser
-from dataclasses import dataclass
 from pathlib import Path
-from shutil import rmtree
-from tempfile import TemporaryDirectory
-from typing import IO, Any, Mapping, MutableMapping
 
 VERSION = "0.7.1"
 
@@ -198,62 +192,100 @@ __BLARG_MAIN__
 """
 
 
-@dataclass
 class CliArgs:
-    script_path: Path | None
-    dump_src: bool
-    version: bool
-    verbose: bool
-    dry_run: bool
-    ssh: str | None = None
+    def __init__(
+        self,
+        script_path: Path | None,
+        dump_src: bool,
+        version: bool,
+        verbose: bool,
+        dry_run: bool,
+        ssh: str | None = None,
+    ):
+        self.script_path = script_path
+        self.dump_src = dump_src
+        self.version = version
+        self.verbose = verbose
+        self.dry_run = dry_run
+        self.ssh = ssh
 
 
-class CliParser(argparse.ArgumentParser):
-    def __init__(self):
-        # TODO: replace ArgumentParser. it's an order of magnitude slower than even
-        # generate_script(), which is reading a bunch of files from disk.
+HELP = """usage: blarg [-h] [--dump-src] [--version] [--verbose] [--dry-run] [--ssh SSH_TARGET] [script_path]
 
-        super().__init__(
-            "blarg",
-            description="Execute bash target files <https://github.com/pcrockett/blarg>",
-        )
-        self.add_argument(
-            "script_path", help="script file to execute", default=None, nargs="?"
-        )
-        self.add_argument(
-            "--dump-src",
-            "-d",
-            help=(
-                "output the full source that would be executed "
-                "by Bash instead of running"
-            ),
-            action="store_true",
-        )
-        self.add_argument(
-            "--version", help="display version number", action="store_true"
-        )
-        self.add_argument(
-            "--verbose", "-v", help="display verbose output", action="store_true"
-        )
-        self.add_argument(
-            "--dry-run", "-r", help="don't apply targets", action="store_true"
-        )
-        self.add_argument(
-            "--ssh",
-            help="Execute on remote machine via SSH",
-            metavar="SSH_TARGET",
-        )
+Execute bash target files <https://github.com/pcrockett/blarg>
+
+positional arguments:
+  script_path        script file to execute
+
+options:
+  -h, --help         show this help message and exit
+  --dump-src, -d     output the full source that would be executed by Bash instead of running
+  --version          display version number
+  --verbose, -v      display verbose output
+  --dry-run, -r      don't apply targets
+  --ssh SSH_TARGET   Execute on remote machine via SSH
+"""
+
+
+def print_help() -> None:
+    print(HELP, end="")
+
+
+def arg_error(message: str) -> None:
+    print(HELP.splitlines()[0], file=sys.stderr)
+    print(f"blarg: error: {message}", file=sys.stderr)
+    sys.exit(2)
+
+
+# hand-rolled instead of argparse, which costs more to import than the rest of
+# blarg's per-target work combined.
+FLAG_OPTIONS = {
+    "--dump-src": "dump_src",
+    "-d": "dump_src",
+    "--version": "version",
+    "--verbose": "verbose",
+    "-v": "verbose",
+    "--dry-run": "dry_run",
+    "-r": "dry_run",
+}
 
 
 def parse_args() -> CliArgs:
-    args = CliParser().parse_args()
+    script_path: Path | None = None
+    options = {"dump_src": False, "version": False, "verbose": False, "dry_run": False}
+    ssh: str | None = None
+
+    argv = sys.argv[1:]
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg in ("-h", "--help"):
+            print_help()
+            sys.exit(0)
+        elif arg == "--ssh":
+            i += 1
+            if i >= len(argv):
+                arg_error("argument --ssh: expected one argument")
+            ssh = argv[i]
+        elif arg.startswith("--ssh="):
+            ssh = arg[len("--ssh=") :]
+        elif arg in FLAG_OPTIONS:
+            options[FLAG_OPTIONS[arg]] = True
+        elif arg.startswith("-") and arg != "-":
+            arg_error(f"unrecognized argument: {arg}")
+        else:
+            if script_path is not None:
+                arg_error(f"unrecognized argument: {arg}")
+            script_path = Path(arg)
+        i += 1
+
     return CliArgs(
-        Path(args.script_path) if args.script_path else None,
-        args.dump_src,
-        args.version,
-        args.verbose,
-        args.dry_run,
-        args.ssh,
+        script_path,
+        options["dump_src"],
+        options["version"],
+        options["verbose"],
+        options["dry_run"],
+        ssh,
     )
 
 
@@ -279,16 +311,20 @@ def generate_script(module_root_dir: Path, script_path: Path) -> str:
 
 def rmtree_if_exists(path: Path):
     if path.exists():
+        from shutil import rmtree
+
         rmtree(path)
 
 
-@dataclass
 class ExternalModule:
-    id: str
-    location: str
-    ref: str
+    def __init__(self, module_id: str, location: str, ref: str):
+        self.id = module_id
+        self.location = location
+        self.ref = ref
 
     def init(self, working_dir: Path) -> Path:
+        import shutil
+
         # `self.ref` could have some dangerous characters in it for file paths. let's
         # use an allowlist of known-safe characters, and replace everything else with
         # an underscore.
@@ -338,12 +374,19 @@ class ExternalModule:
         return module_dir
 
 
-@dataclass
 class BlargConfig:
-    modules: list[ExternalModule]
+    def __init__(self, modules: list[ExternalModule]):
+        self.modules = modules
 
 
 def parse_config(config_path: Path) -> BlargConfig:
+    if not config_path.exists():
+        # ConfigParser.read() silently ignores a missing file, which simply
+        # means there are no external modules.
+        return BlargConfig([])
+
+    from configparser import ConfigParser
+
     ALLOWED_MODULE_NAME_CHARS = set("abcdefghijklmnopqrstuvwxyz_0123456789")
     config = ConfigParser()
     config.read(config_path)
@@ -371,7 +414,7 @@ def parse_config(config_path: Path) -> BlargConfig:
 
 
 class SSHProcess:
-    def __init__(self, remote_target: str, env: Mapping[str, str]):
+    def __init__(self, remote_target: str, env: dict[str, str]):
         self._remote_target = remote_target
 
         local_control_dir = Path(env.get("TMPDIR", "/tmp")) / "blarg-ssh"
@@ -394,11 +437,13 @@ class SSHProcess:
         full_command = self._build_ssh_command(remote_command, pty)
         return subprocess.Popen(full_command)
 
-    def send_data(self, remote_command: str, data: IO[Any]) -> subprocess.Popen:
+    def send_data(self, remote_command: str, data) -> subprocess.Popen:
         full_command = self._build_ssh_command(remote_command)
         return subprocess.Popen(full_command, stdin=data)
 
     def _build_ssh_command(self, remote_command: str, pty: bool = False) -> list[str]:
+        import shlex
+
         base = ["ssh", "-t"] if pty else ["ssh"]
         # the remote user's login shell may not be POSIX-compatible (e.g. fish), and
         # our command strings rely on POSIX syntax (`${VAR:-default}`, `VAR=value cmd`).
@@ -417,10 +462,14 @@ def execute_remote(
     ssh_target: str,
     working_dir: Path,
     script_path: Path,
-    env: Mapping[str, str],
+    env: dict[str, str],
     verbose: bool,
     dry_run: bool,
 ) -> int:
+    import secrets
+    import shlex
+    import shutil
+
     resolved_script_path = script_path.resolve()
     resolved_working_dir = working_dir.resolve()
     if not str(resolved_script_path).startswith(str(resolved_working_dir)):
@@ -525,7 +574,7 @@ def execute_local(
     working_dir: Path,
     module_dir: Path,
     script_path: Path,
-    env: MutableMapping[str, str],
+    env: dict[str, str],
     verbose: bool,
     dry_run: bool,
 ):
@@ -581,6 +630,8 @@ def execute_local(
     if temp_dir_path:
         temp_dir = None  # a different blarg process is managing this directory
     else:
+        from tempfile import TemporaryDirectory
+
         temp_dir = TemporaryDirectory()
         temp_dir_path = temp_dir.name
         env["BLARG_RUN_DIR"] = temp_dir_path
@@ -618,7 +669,7 @@ def main() -> int:
         return fatal_exit_code("--ssh and --dump-src are mutually exclusive")
 
     if not args.script_path:
-        CliParser().print_help()
+        print_help()
         return 0
 
     script_path = args.script_path
