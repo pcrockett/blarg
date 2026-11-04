@@ -690,10 +690,13 @@ def main() -> int:
         print(generate_script(module_dir, script_path))
         return 0
 
-    config = parse_config(module_dir / "blarg.conf")
-    for module in config.modules:
-        external_module_dir = module.init(working_dir)
-        env[f"BLARG_MODULE_{module.id}"] = str(external_module_dir)
+    config_path = module_dir / "blarg.conf"
+    if env.get("BLARG_MODULE_CONFIG_PATH") != str(config_path):
+        config = parse_config(config_path)
+        for module in config.modules:
+            external_module_dir = module.init(working_dir)
+            env[f"BLARG_MODULE_{module.id}"] = str(external_module_dir)
+        env["BLARG_MODULE_CONFIG_PATH"] = str(config_path)
 
     is_verbose = args.verbose or "BLARG_VERBOSE" in env
 
