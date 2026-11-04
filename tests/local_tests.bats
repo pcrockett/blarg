@@ -83,6 +83,36 @@ FATAL: panic\.apply\(\) returned with code 1\.$'
     assert_exit_code 1
 }
 
+@test 'running targets - colon in target path - error' {
+    mkdir --parent targets
+    cat >'targets/bad:name.bash' <<'EOF'
+#!/usr/bin/env blarg
+satisfied_if() { true; }
+EOF
+    chmod +x 'targets/bad:name.bash'
+    capture_output ./targets/bad:name.bash
+    assert_stderr '^FATAL: Target path may not contain a colon: .+/targets/bad:name\.bash$'
+    assert_no_stdout
+    assert_exit_code 1
+}
+
+@test 'depends_on - colon in dependency target path - error' {
+    mkdir --parent targets
+    cat >targets/main.bash <<'EOF'
+#!/usr/bin/env blarg
+depends_on bad:name
+EOF
+    cat >'targets/bad:name.bash' <<'EOF'
+#!/usr/bin/env blarg
+satisfied_if() { true; }
+EOF
+    chmod +x targets/main.bash 'targets/bad:name.bash'
+    capture_output ./targets/main.bash
+    assert_stderr '^FATAL: Target path may not contain a colon: .+/targets/bad:name\.bash$'
+    assert_no_stdout
+    assert_exit_code 1
+}
+
 @test 'lib.d - exists - is used' {
     use_target lib_d
     use_lib
@@ -160,7 +190,7 @@ hello, there\.\.\.
         'BLARG_CWD=/tmp/blarg-test\.[[:alnum:]]+'
         'BLARG_INDENT=-->[[:space:]]'
         'BLARG_MODULE_DIR=/tmp/blarg-test\.[[:alnum:]]+'
-        'BLARG_RUNNING_TARGETS=\["/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash"]'
+        'BLARG_RUNNING_TARGETS=/tmp/blarg-test\.[[:alnum:]]+/targets/print_env\.bash'
         'BLARG_RUN_DIR=/tmp/[[:print:]]+'
         'BLARG_TARGETS_DIR=/tmp/blarg-test\.[[:alnum:]]+/targets'
         'BLARG_TARGET_NAME=print_env'

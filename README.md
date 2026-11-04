@@ -60,7 +60,7 @@ For a real-world example involving a much larger dependency tree, see
 
 ## Minimalism
 
-`blarg` is a single Python script with less than 700 lines of code. It has three
+`blarg` is a single Python script with less than 800 lines of code. It has three
 dependencies (which are found on almost every Linux distribution out-of-the-box):
 
 - Python 3.7 or newer
