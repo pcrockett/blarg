@@ -3,6 +3,10 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+module_id="blarg_targets"
+module_location="https://github.com/pcrockett/blarg-targets.git"
+module_ref="v0.5.1"
+
 write_target() {
     local target_path="${1}"
     cat >"${target_path}" <<'EOF'
@@ -29,6 +33,12 @@ main() {
     cp "${repo_root}/blarg" "${tmp_dir}/bin/blarg"
     export PATH="${tmp_dir}/bin:${PATH}"
 
+    cat >"${tmp_dir}/blarg.conf" <<EOF
+[module.${module_id}]
+location = ${module_location}
+ref = ${module_ref}
+EOF
+
     printf '#!/usr/bin/env blarg\n' >"${tmp_dir}/targets/main.bash"
     local i target_name
     for ((i = 1; i <= num_targets; i++)); do
@@ -41,6 +51,11 @@ main() {
 
     cd "${tmp_dir}"
 
+    # warmup: clones external modules into .blarg/ so the clone cost is not timed
+    echo "warmup: running a single target to clone external module '${module_id}' (${module_ref})..."
+    blarg ./targets/target_001.bash
+
+    echo "timed run: ${num_targets} targets..."
     local start_ns end_ns elapsed_ns
     start_ns="$(date +%s%N)"
     blarg ./targets/main.bash
